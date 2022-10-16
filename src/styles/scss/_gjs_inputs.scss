@@ -68,6 +68,16 @@
       }
     }
 
+    input[type=number] {
+      -moz-appearance: textfield;
+
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+    }
+
     &-range {
       flex: 9 1 auto;
     }
@@ -91,7 +101,7 @@
 }
 
 .#{$app-prefix}field {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: $mainDkColor;
   border: none;
   box-shadow: none;
   border-radius: 2px;
@@ -254,6 +264,10 @@
   font-size: 10px;
   color: $arrowColor;
   cursor: pointer;
+}
+
+.#{$app-prefix}input-unit {
+  text-align: center;
 }
 
 .#{$app-prefix}field-arrow-u,

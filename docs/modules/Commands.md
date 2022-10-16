@@ -164,7 +164,7 @@ run(editor) {
 
 To disable the command use `editor.stopCommand` method, so in our case it'll be `editor.stopCommand('my-command-state')`. As for the `runCommand` you can pass an options object as a second argument and use them in your `stop` method.
 
-Once the command is active, if you try to run `editor.runCommand('my-command-state')` again you'll notice that that the `run` is not triggering. This behavior is useful to prevent executing multiple times the activation process which might lead to an inconsistent state (think about, for instance, having a counter, which should be increased on `run` and decreased on `stop`). If you need to run a command multiple times probably you're dealing with a not stateful command, so try to use it without the `stop` method, but in case you're aware of your application state you can actually force the execution with `editor.runCommand('my-command-state', { force: true })`. The same logic applies to the `stopCommand` method.
+Once the command is active, if you try to run `editor.runCommand('my-command-state')` again you'll notice that the `run` is not triggering. This behavior is useful to prevent executing multiple times the activation process which might lead to an inconsistent state (think about, for instance, having a counter, which should be increased on `run` and decreased on `stop`). If you need to run a command multiple times probably you're dealing with a not stateful command, so try to use it without the `stop` method, but in case you're aware of your application state you can actually force the execution with `editor.runCommand('my-command-state', { force: true })`. The same logic applies to the `stopCommand` method.
 
 <br/>
 
@@ -264,7 +264,7 @@ The Commands module offers also a set of events that you can use to intercept th
 
 ### Intercept run and stop
 
-By using our previosly created `my-command-modal` command let's see which events we can listen to
+By using our previously created `my-command-modal` command let's see which events we can listen to
 
 ```js
 editor.on('run:my-command-modal', () => {

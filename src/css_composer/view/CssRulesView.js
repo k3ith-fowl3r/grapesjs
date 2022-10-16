@@ -1,13 +1,19 @@
-import Backbone from 'backbone';
+import { bindAll } from 'underscore';
+
+import { View } from '../../common';
+import { createEl } from '../../utils/dom';
 import CssRuleView from './CssRuleView';
 import CssGroupRuleView from './CssGroupRuleView';
 
-const $ = Backbone.$;
+const getBlockId = (pfx, order) => `${pfx}${order ? `-${parseFloat(order)}` : ''}`;
 
-const getBlockId = (pfx, order) =>
-  `${pfx}${order ? `-${parseFloat(order)}` : ''}`;
+export default class CssRulesView extends View {
+  constructor(options) {
+    super(options);
 
-export default Backbone.View.extend({
+    bindAll(this, 'sortRules');
+  }
+
   initialize(o) {
     const config = o.config || {};
     this.atRules = {};
@@ -18,7 +24,7 @@ export default Backbone.View.extend({
     const coll = this.collection;
     this.listenTo(coll, 'add', this.addTo);
     this.listenTo(coll, 'reset', this.render);
-  },
+  }
 
   /**
    * Add to collection
@@ -27,7 +33,7 @@ export default Backbone.View.extend({
    * */
   addTo(model) {
     this.addToCollection(model);
-  },
+  }
 
   /**
    * Add new object to collection
@@ -59,7 +65,7 @@ export default Backbone.View.extend({
         atRuleEl = document.createTextNode('');
         styleEl.appendChild(document.createTextNode(`${atRule}{`));
         styleEl.appendChild(atRuleEl);
-        styleEl.appendChild(document.createTextNode(`}`));
+        styleEl.appendChild(document.createTextNode('}'));
         this.atRules[atRule] = atRuleEl;
         rendered = styleEl;
       }
@@ -100,16 +106,23 @@ export default Backbone.View.extend({
     }
 
     return rendered;
-  },
+  }
 
   getMediaWidth(mediaText) {
-    return (
-      mediaText &&
-      mediaText
-        .replace(`(${this.em.getConfig('mediaCondition')}: `, '')
-        .replace(')', '')
-    );
-  },
+    return mediaText && mediaText.replace(`(${this.em.getConfig().mediaCondition}: `, '').replace(')', '');
+  }
+
+  sortRules(a, b) {
+    const { em } = this;
+    const isMobFirst = (em.getConfig().mediaCondition || '').indexOf('min-width') !== -1;
+
+    if (!isMobFirst) return 0;
+
+    const left = isMobFirst ? a : b;
+    const right = isMobFirst ? b : a;
+
+    return left - right;
+  }
 
   render() {
     this.renderStarted = 1;
@@ -119,18 +132,13 @@ export default Backbone.View.extend({
     $el.empty();
 
     // Create devices related DOM structure, ensure also to have a default container
-    const prs = em
-      .get('DeviceManager')
-      .getAll()
-      .pluck('priority');
+    const prs = em.get('DeviceManager').getAll().pluck('priority').sort(this.sortRules);
     prs.every(pr => pr) && prs.unshift(0);
-    prs.forEach(pr =>
-      $(`<div id="${getBlockId(className, pr)}"></div>`).appendTo(frag)
-    );
+    prs.forEach(pr => frag.appendChild(createEl('div', { id: getBlockId(className, pr) })));
 
     collection.each(model => this.addToCollection(model, frag));
     $el.append(frag);
     $el.attr('class', className);
     return this;
   }
-});
+}

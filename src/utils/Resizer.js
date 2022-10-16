@@ -1,5 +1,5 @@
 import { bindAll, defaults, isFunction, each } from 'underscore';
-import { on, off, normalizeFloat } from 'utils/mixins';
+import { on, off, normalizeFloat } from './mixins';
 
 var defaultOpts = {
   // Function which returns custom X and Y coordinates of the mouse
@@ -12,12 +12,13 @@ var defaultOpts = {
   onStart: null,
   onMove: null,
   onEnd: null,
+  onUpdateContainer: () => {},
 
   // Resize unit step
   step: 1,
 
   // Minimum dimension
-  minDim: 32,
+  minDim: 10,
 
   // Maximum dimension
   maxDim: '',
@@ -65,7 +66,7 @@ var defaultOpts = {
   cr: 1, // Center right
   bl: 1, // Bottom left
   bc: 1, // Bottom center
-  br: 1 // Bottom right
+  br: 1, // Bottom right
 };
 
 var createHandler = (name, opts) => {
@@ -83,7 +84,7 @@ var getBoundingRect = (el, win) => {
     left: rect.left + w.pageXOffset,
     top: rect.top + w.pageYOffset,
     width: rect.width,
-    height: rect.height
+    height: rect.height,
   };
 };
 
@@ -154,6 +155,7 @@ class Resizer {
     this.onStart = opts.onStart;
     this.onMove = opts.onMove;
     this.onEnd = opts.onEnd;
+    this.onUpdateContainer = opts.onUpdateContainer;
   }
 
   /**
@@ -191,6 +193,14 @@ class Resizer {
   }
 
   /**
+   * Returns the parent of the focused element
+   * @return {HTMLElement}
+   */
+  getParentEl() {
+    return this.el.parentElement;
+  }
+
+  /**
    * Returns documents
    */
   getDocumentEl() {
@@ -220,7 +230,7 @@ class Resizer {
 
     this.el = el;
     this.updateContainer({ forceShow: 1 });
-    on(this.getDocumentEl(), 'mousedown', this.handleMouseDown);
+    on(this.getDocumentEl(), 'pointerdown', this.handleMouseDown);
   }
 
   /**
@@ -230,7 +240,7 @@ class Resizer {
     this.container.style.display = 'none';
 
     if (this.el) {
-      off(this.getDocumentEl(), 'mousedown', this.handleMouseDown);
+      off(this.getDocumentEl(), 'pointerdown', this.handleMouseDown);
       this.el = null;
     }
   }
@@ -245,36 +255,47 @@ class Resizer {
     e.preventDefault();
     e.stopPropagation();
     const el = this.el;
+    const parentEl = this.getParentEl();
     const resizer = this;
     const config = this.opts || {};
-    var attrName = 'data-' + config.prefix + 'handler';
-    var rect = this.getElementPos(el, { target: 'el' });
+    const mouseFetch = this.mousePosFetcher;
+    const attrName = 'data-' + config.prefix + 'handler';
+    const rect = this.getElementPos(el, { target: 'el' });
+    const parentRect = this.getElementPos(parentEl);
     this.handlerAttr = e.target.getAttribute(attrName);
     this.clickedHandler = e.target;
     this.startDim = {
       t: rect.top,
       l: rect.left,
       w: rect.width,
-      h: rect.height
+      h: rect.height,
     };
     this.rectDim = {
       t: rect.top,
       l: rect.left,
       w: rect.width,
-      h: rect.height
+      h: rect.height,
     };
-    this.startPos = {
-      x: e.clientX,
-      y: e.clientY
+    this.startPos = mouseFetch
+      ? mouseFetch(e)
+      : {
+          x: e.clientX,
+          y: e.clientY,
+        };
+    this.parentDim = {
+      t: parentRect.top,
+      l: parentRect.left,
+      w: parentRect.width,
+      h: parentRect.height,
     };
 
     // Listen events
-    var doc = this.getDocumentEl();
-    on(doc, 'mousemove', this.move);
-    on(doc, 'keydown', this.handleKeyDown);
-    on(doc, 'mouseup', this.stop);
-    isFunction(this.onStart) &&
-      this.onStart(e, { docs: doc, config, el, resizer });
+    const docs = this.getDocumentEl();
+    this.docs = docs;
+    on(docs, 'pointermove', this.move);
+    on(docs, 'keydown', this.handleKeyDown);
+    on(docs, 'pointerup', this.stop);
+    isFunction(this.onStart) && this.onStart(e, { docs, config, el, resizer });
     this.toggleFrames(1);
     this.move(e);
   }
@@ -285,23 +306,22 @@ class Resizer {
    */
   move(e) {
     const onMove = this.onMove;
-    var mouseFetch = this.mousePosFetcher;
-    var currentPos = mouseFetch
+    const mouseFetch = this.mousePosFetcher;
+    const currentPos = mouseFetch
       ? mouseFetch(e)
       : {
           x: e.clientX,
-          y: e.clientY
+          y: e.clientY,
         };
-
     this.currentPos = currentPos;
     this.delta = {
       x: currentPos.x - this.startPos.x,
-      y: currentPos.y - this.startPos.y
+      y: currentPos.y - this.startPos.y,
     };
     this.keys = {
       shift: e.shiftKey,
       ctrl: e.ctrlKey,
-      alt: e.altKey
+      alt: e.altKey,
     };
 
     this.rectDim = this.calc(this);
@@ -309,11 +329,6 @@ class Resizer {
 
     // Move callback
     onMove && onMove(e);
-
-    // In case the mouse button was released outside of the window
-    if (e.which === 0) {
-      this.stop(e);
-    }
   }
 
   /**
@@ -321,14 +336,16 @@ class Resizer {
    * @param  {Event} e
    */
   stop(e) {
+    const { el } = this;
     const config = this.opts;
-    var doc = this.getDocumentEl();
-    off(doc, 'mousemove', this.move);
-    off(doc, 'keydown', this.handleKeyDown);
-    off(doc, 'mouseup', this.stop);
+    const docs = this.docs || this.getDocumentEl();
+    off(docs, 'pointermove', this.move);
+    off(docs, 'keydown', this.handleKeyDown);
+    off(docs, 'pointerup', this.stop);
     this.updateRect(1);
     this.toggleFrames();
-    isFunction(this.onEnd) && this.onEnd(e, { docs: doc, config });
+    isFunction(this.onEnd) && this.onEnd(e, { docs, config, el, resizer: this });
+    delete this.docs;
   }
 
   /**
@@ -349,7 +366,7 @@ class Resizer {
         store,
         selectedHandler,
         resizer,
-        config
+        config,
       });
     } else {
       const elStyle = el.style;
@@ -365,11 +382,22 @@ class Resizer {
     const { style } = container;
 
     if (!opts.avoidContainerUpdate && el) {
-      const toUpdate = ['left', 'top', 'width', 'height'];
-      const rectEl = this.getElementPos(el, { target: 'container' });
-      toUpdate.forEach(pos => (style[pos] = `${rectEl[pos]}px`));
+      // On component resize container fits the tool,
+      // to check if this update is required somewhere else point
+      // const toUpdate = ['left', 'top', 'width', 'height'];
+      // const rectEl = this.getElementPos(el, { target: 'container' });
+      // toUpdate.forEach(pos => (style[pos] = `${rectEl[pos]}px`));
       if (opt.forceShow) style.display = 'block';
     }
+
+    this.onUpdateContainer({
+      el: container,
+      resizer: this,
+      opts: {
+        ...opts,
+        ...opt,
+      },
+    });
   }
 
   /**
@@ -428,38 +456,54 @@ class Resizer {
     const maxDim = opts.maxDim;
     const deltaX = data.delta.x;
     const deltaY = data.delta.y;
-    const startW = startDim.w;
-    const startH = startDim.h;
+    const parentW = this.parentDim.w;
+    const parentH = this.parentDim.h;
+    const unitWidth = this.opts.unitWidth;
+    const unitHeight = this.opts.unitHeight;
+    const startW = unitWidth === '%' ? (startDim.w / 100) * parentW : startDim.w;
+    const startH = unitHeight === '%' ? (startDim.h / 100) * parentH : startDim.h;
     var box = {
       t: 0,
       l: 0,
       w: startW,
-      h: startH
+      h: startH,
     };
 
     if (!data) return;
 
     var attr = data.handlerAttr;
     if (~attr.indexOf('r')) {
-      value = normalizeFloat(startW + deltaX * step, step);
+      value =
+        unitWidth === '%'
+          ? normalizeFloat(((startW + deltaX * step) / parentW) * 100, 0.01)
+          : normalizeFloat(startW + deltaX * step, step);
       value = Math.max(minDim, value);
       maxDim && (value = Math.min(maxDim, value));
       box.w = value;
     }
     if (~attr.indexOf('b')) {
-      value = normalizeFloat(startH + deltaY * step, step);
+      value =
+        unitHeight === '%'
+          ? normalizeFloat(((startH + deltaY * step) / parentH) * 100, 0.01)
+          : normalizeFloat(startH + deltaY * step, step);
       value = Math.max(minDim, value);
       maxDim && (value = Math.min(maxDim, value));
       box.h = value;
     }
     if (~attr.indexOf('l')) {
-      value = normalizeFloat(startW - deltaX * step, step);
+      value =
+        unitWidth === '%'
+          ? normalizeFloat(((startW - deltaX * step) / parentW) * 100, 0.01)
+          : normalizeFloat(startW - deltaX * step, step);
       value = Math.max(minDim, value);
       maxDim && (value = Math.min(maxDim, value));
       box.w = value;
     }
     if (~attr.indexOf('t')) {
-      value = normalizeFloat(startH - deltaY * step, step);
+      value =
+        unitHeight === '%'
+          ? normalizeFloat(((startH - deltaY * step) / parentH) * 100, 0.01)
+          : normalizeFloat(startH - deltaY * step, step);
       value = Math.max(minDim, value);
       maxDim && (value = Math.min(maxDim, value));
       box.h = value;
@@ -490,5 +534,5 @@ class Resizer {
 export default {
   init(opts) {
     return new Resizer(opts);
-  }
+  },
 };

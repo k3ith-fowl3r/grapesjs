@@ -1,34 +1,17 @@
 import Component from './Component';
+import { toLowerCase } from 'utils/mixins';
 
-export default Component.extend(
-  {
-    defaults: {
-      ...Component.prototype.defaults,
-      type: 'row',
-      tagName: 'tr',
+const tagName = 'tr';
+
+export default class ComponentTableRow extends Component {
+  get defaults() {
+    return {
+      ...super.defaults,
+      tagName,
       draggable: ['thead', 'tbody', 'tfoot'],
-      droppable: ['th', 'td']
-    },
-
-    initialize(o, opt) {
-      Component.prototype.initialize.apply(this, arguments);
-
-      // Clean the row from non cell components
-      const cells = [];
-      const components = this.get('components');
-      components.each(model => model.is('cell') && cells.push(model));
-      components.reset(cells);
-    }
-  },
-  {
-    isComponent(el) {
-      let result = '';
-
-      if (el.tagName == 'TR') {
-        result = { type: 'row' };
-      }
-
-      return result;
-    }
+      droppable: ['th', 'td'],
+    };
   }
-);
+}
+
+ComponentTableRow.isComponent = el => toLowerCase(el.tagName) === tagName;

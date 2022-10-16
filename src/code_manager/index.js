@@ -219,6 +219,10 @@ export default () => {
       for (var id in defViewers) this.addViewer(id, defViewers[id]);
 
       return this;
-    }
+    },
+
+    destroy() {
+      [c, generators, defGenerators, viewers, defViewers].forEach(i => (i = {}));
+    },
   };
 };

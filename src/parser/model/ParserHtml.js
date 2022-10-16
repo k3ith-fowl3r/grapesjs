@@ -1,9 +1,10 @@
-import { each, isString } from 'underscore';
+import { each, isString, isFunction, isUndefined } from 'underscore';
+import BrowserParserHtml from './BrowserParserHtml';
 
 export default config => {
-  var TEXT_NODE = 'span';
-  var c = config;
-  var modelAttrStart = 'data-gjs-';
+  let c = config;
+  const modelAttrStart = 'data-gjs-';
+  const event = 'parse:html';
 
   return {
     compTypes: '',
@@ -34,8 +35,7 @@ export default config => {
           // so put it under try/catch and let fail silently
           try {
             value =
-              (firstChar == '{' && lastChar == '}') ||
-              (firstChar == '[' && lastChar == ']')
+              (firstChar == '{' && lastChar == '}') || (firstChar == '[' && lastChar == ']')
                 ? JSON.parse(value)
                 : value;
           } catch (e) {}
@@ -48,7 +48,7 @@ export default config => {
 
       return {
         props,
-        attrs
+        attrs,
       };
     },
 
@@ -68,10 +68,7 @@ export default config => {
         var decl = decls[i].trim();
         if (!decl) continue;
         var prop = decl.split(':');
-        result[prop[0].trim()] = prop
-          .slice(1)
-          .join(':')
-          .trim();
+        result[prop[0].trim()] = prop.slice(1).join(':').trim();
       }
       return result;
     },
@@ -101,7 +98,7 @@ export default config => {
      * @param  {HTMLElement} el DOM element to traverse
      * @return {Array<Object>}
      */
-    parseNode(el) {
+    parseNode(el, opts = {}) {
       const result = [];
       const nodes = el.childNodes;
 
@@ -117,8 +114,7 @@ export default config => {
         // Start with understanding what kind of component it is
         if (ct) {
           let obj = '';
-          let type =
-            node.getAttribute && node.getAttribute(`${modelAttrStart}type`);
+          let type = node.getAttribute && node.getAttribute(`${modelAttrStart}type`);
 
           // If the type is already defined, use it
           if (type) {
@@ -128,7 +124,7 @@ export default config => {
             // the first with a valid result will be that component
             for (let it = 0; it < ct.length; it++) {
               const compType = ct[it];
-              obj = compType.model.isComponent(node);
+              obj = compType.model.isComponent(node, opts);
 
               if (obj) {
                 if (typeof obj !== 'object') {
@@ -144,7 +140,9 @@ export default config => {
 
         // Set tag name if not yet done
         if (!model.tagName) {
-          model.tagName = node.tagName ? node.tagName.toLowerCase() : '';
+          const tag = node.tagName || '';
+          const ns = node.namespaceURI || '';
+          model.tagName = tag && ns === 'http://www.w3.org/1999/xhtml' ? tag.toLowerCase() : tag;
         }
 
         if (attrsLen) {
@@ -176,14 +174,18 @@ export default config => {
             // so put it under try/catch and let fail silently
             try {
               nodeValue =
-                (firstChar == '{' && lastChar == '}') ||
-                (firstChar == '[' && lastChar == ']')
+                (firstChar == '{' && lastChar == '}') || (firstChar == '[' && lastChar == ']')
                   ? JSON.parse(nodeValue)
                   : nodeValue;
             } catch (e) {}
 
             model[modelAttr] = nodeValue;
           } else {
+            // Check for attributes from props (eg. required, disabled)
+            if (nodeValue === '' && node[nodeName] === true) {
+              nodeValue = true;
+            }
+
             model.attributes[nodeName] = nodeValue;
           }
         }
@@ -197,9 +199,15 @@ export default config => {
           // just make it content of the current node
           if (nodeChild === 1 && firstChild.nodeType === 3) {
             !model.type && (model.type = 'text');
-            model.content = firstChild.nodeValue;
+            model.components = {
+              type: 'textnode',
+              content: firstChild.nodeValue,
+            };
           } else {
-            model.components = this.parseNode(node);
+            model.components = this.parseNode(node, {
+              ...opts,
+              inSvg: opts.inSvg || model.type === 'svg',
+            });
           }
         }
 
@@ -219,6 +227,11 @@ export default config => {
           }
         }
 
+        // Check for custom void elements (valid in XML)
+        if (!nodeChild && `${node.outerHTML}`.slice(-2) === '/>') {
+          model.void = true;
+        }
+
         // If all children are texts and there is some textnode the parent should
         // be text too otherwise I'm unable to edit texnodes
         const comps = model.components;
@@ -230,10 +243,7 @@ export default config => {
             const comp = comps[ci];
             const cType = comp.type;
 
-            if (
-              ['text', 'textnode'].indexOf(cType) < 0 &&
-              c.textTags.indexOf(comp.tagName) < 0
-            ) {
+            if (['text', 'textnode'].indexOf(cType) < 0 && c.textTags.indexOf(comp.tagName) < 0) {
               allTxt = 0;
               break;
             }
@@ -265,24 +275,39 @@ export default config => {
      * @param  {ParserCss} parserCss In case there is style tags inside HTML
      * @return {Object}
      */
-    parse(str, parserCss) {
-      var config = (c.em && c.em.get('Config')) || {};
-      var res = { html: '', css: '' };
-      var el = document.createElement('div');
-      el.innerHTML = str;
-      var scripts = el.querySelectorAll('script');
-      var i = scripts.length;
+    parse(str, parserCss, opts = {}) {
+      const { em } = c;
+      const conf = (em && em.get('Config')) || {};
+      const res = { html: null, css: null };
+      const cf = { ...config, ...opts };
+      const options = {
+        ...config.optionsHtml,
+        // Support previous `configParser.htmlType` option
+        htmlType: config.optionsHtml?.htmlType || config.htmlType,
+        ...opts,
+      };
+      const el = isFunction(cf.parserHtml) ? cf.parserHtml(str, options) : BrowserParserHtml(str, options);
+      const scripts = el.querySelectorAll('script');
+      let i = scripts.length;
 
-      // Remove all scripts
-      if (!config.allowScripts) {
+      // Support previous `configMain.allowScripts` option
+      const allowScripts = !isUndefined(conf.allowScripts) ? conf.allowScripts : options.allowScripts;
+
+      // Remove script tags
+      if (!allowScripts) {
         while (i--) scripts[i].parentNode.removeChild(scripts[i]);
+      }
+
+      // Remove unsafe attributes
+      if (!options.allowUnsafeAttr) {
+        this.__clearUnsafeAttr(el);
       }
 
       // Detach style tags and parse them
       if (parserCss) {
-        var styleStr = '';
-        var styles = el.querySelectorAll('style');
-        var j = styles.length;
+        const styles = el.querySelectorAll('style');
+        let j = styles.length;
+        let styleStr = '';
 
         while (j--) {
           styleStr = styles[j].innerHTML + styleStr;
@@ -292,13 +317,26 @@ export default config => {
         if (styleStr) res.css = parserCss.parse(styleStr);
       }
 
-      var result = this.parseNode(el);
-
-      if (result.length == 1) result = result[0];
-
-      res.html = result;
+      em && em.trigger(`${event}:root`, { input: str, root: el });
+      const result = this.parseNode(el, cf);
+      // I have to keep it otherwise it breaks the DomComponents.addComponent (returns always array)
+      const resHtml = result.length === 1 && !c.returnArray ? result[0] : result;
+      res.html = resHtml;
+      em && em.trigger(event, { input: str, output: res });
 
       return res;
-    }
+    },
+
+    __clearUnsafeAttr(node) {
+      const attrs = node.attributes || [];
+      const nodes = node.childNodes || [];
+      const toRemove = [];
+      each(attrs, attr => {
+        const name = attr.nodeName || '';
+        name.indexOf('on') === 0 && toRemove.push(name);
+      });
+      toRemove.map(name => node.removeAttribute(name));
+      each(nodes, node => this.__clearUnsafeAttr(node));
+    },
   };
 };

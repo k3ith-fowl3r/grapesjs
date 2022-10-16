@@ -1,6 +1,7 @@
 import Dragger from './Dragger';
 import Sorter from './Sorter';
 import Resizer from './Resizer';
+import * as mixins from './mixins';
 
 export default () => {
   return {
@@ -18,8 +19,11 @@ export default () => {
       return this;
     },
 
+    destroy() {},
+
     Sorter,
     Resizer,
-    Dragger
+    Dragger,
+    helpers: { ...mixins },
   };
 };

@@ -1,6 +1,6 @@
 import { extend, bindAll } from 'underscore';
 import Backbone from 'backbone';
-import { on, off } from 'utils/mixins';
+import { on, off } from '../../utils/mixins';
 import SelectComponent from './SelectComponent';
 import SelectPosition from './SelectPosition';
 
@@ -91,10 +91,13 @@ export default extend({}, SelectPosition, SelectComponent, {
     // Avoid badge showing on move
     this.cacheEl = null;
     const lastModel = models[models.length - 1];
-    const doc = this.frameEl.contentDocument;
-    this.startSelectPosition(lastModel.view.el, doc);
+    const frame = (this.em.get('currentFrame') || {}).model;
+    const el = lastModel.getEl(frame);
+    const doc = el.ownerDocument;
+    this.startSelectPosition(el, doc, { onStart: this.onStart });
     this.sorter.draggable = lastModel.get('draggable');
     this.sorter.toMove = models;
+    this.sorter.onMoveClb = this.onDrag;
     this.sorter.onEndMove = this.onEndMoveFromModel.bind(this);
     this.stopSelectComponent();
     on(this.getContentWindow(), 'keydown', this.rollback);
@@ -161,8 +164,6 @@ export default extend({}, SelectPosition, SelectComponent, {
     this.getBadgeEl().removeClass(this.badgeClass);
     this.getHighlighterEl().removeClass(this.hoverClass);
     var wp = this.$wrapper;
-    wp.css('cursor', '')
-      .unbind()
-      .removeClass(this.noSelClass);
-  }
+    wp.css('cursor', '').unbind().removeClass(this.noSelClass);
+  },
 });

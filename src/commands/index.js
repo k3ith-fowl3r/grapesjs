@@ -8,12 +8,27 @@
  * })
  * ```
  *
- * Once the editor is instantiated you can use its API. Before using these methods you should get the module from the instance
+ * Once the editor is instantiated you can use its API and listen to its events. Before using these methods, you should get the module from the instance.
  *
  * ```js
+ * // Listen to events
+ * editor.on('run', () => { ... });
+ *
+ * // Use the API
  * const commands = editor.Commands;
+ * commands.add(...);
  * ```
  *
+ ** ## Available Events
+ * * `run:{commandName}` - Triggered when some command is called to run (eg. editor.runCommand('preview'))
+ * * `stop:{commandName}` - Triggered when some command is called to stop (eg. editor.stopCommand('preview'))
+ * * `run:{commandName}:before` - Triggered before the command is called
+ * * `stop:{commandName}:before` - Triggered before the command is called to stop
+ * * `abort:{commandName}` - Triggered when the command execution is aborted (`editor.on(`run:preview:before`, opts => opts.abort = 1);`)
+ * * `run` - Triggered on run of any command. The id and the result are passed as arguments to the callback
+ * * `stop` - Triggered on stop of any command. The id and the result are passed as arguments to the callback
+ *
+ * ## Methods
  * * [add](#add)
  * * [get](#get)
  * * [getAll](#getall)
@@ -30,6 +45,34 @@
 import { isFunction, includes } from 'underscore';
 import CommandAbstract from './view/CommandAbstract';
 import defaults from './config/config';
+import { eventDrag } from '../dom_components/model/Component';
+
+const commandsDef = [
+  ['preview', 'Preview', 'preview'],
+  ['resize', 'Resize', 'resize'],
+  ['fullscreen', 'Fullscreen', 'fullscreen'],
+  ['copy', 'CopyComponent'],
+  ['paste', 'PasteComponent'],
+  ['canvas-move', 'CanvasMove'],
+  ['canvas-clear', 'CanvasClear'],
+  ['open-code', 'ExportTemplate', 'export-template'],
+  ['open-layers', 'OpenLayers', 'open-layers'],
+  ['open-styles', 'OpenStyleManager', 'open-sm'],
+  ['open-traits', 'OpenTraitManager', 'open-tm'],
+  ['open-blocks', 'OpenBlocks', 'open-blocks'],
+  ['open-assets', 'OpenAssets', 'open-assets'],
+  ['component-select', 'SelectComponent', 'select-comp'],
+  ['component-outline', 'SwitchVisibility', 'sw-visibility'],
+  ['component-offset', 'ShowOffset', 'show-offset'],
+  ['component-move', 'MoveComponent', 'move-comp'],
+  ['component-next', 'ComponentNext'],
+  ['component-prev', 'ComponentPrev'],
+  ['component-enter', 'ComponentEnter'],
+  ['component-exit', 'ComponentExit', 'select-parent'],
+  ['component-delete', 'ComponentDelete'],
+  ['component-style-clear', 'ComponentStyleClear'],
+  ['component-drag', 'ComponentDrag'],
+];
 
 export default () => {
   let em;
@@ -37,35 +80,9 @@ export default () => {
   const commands = {};
   const defaultCommands = {};
   const active = {};
-  const commandsDef = [
-    ['preview', 'Preview', 'preview'],
-    ['resize', 'Resize', 'resize'],
-    ['fullscreen', 'Fullscreen', 'fullscreen'],
-    ['copy', 'CopyComponent'],
-    ['paste', 'PasteComponent'],
-    ['canvas-move', 'CanvasMove'],
-    ['canvas-clear', 'CanvasClear'],
-    ['open-code', 'ExportTemplate', 'export-template'],
-    ['open-layers', 'OpenLayers', 'open-layers'],
-    ['open-styles', 'OpenStyleManager', 'open-sm'],
-    ['open-traits', 'OpenTraitManager', 'open-tm'],
-    ['open-blocks', 'OpenBlocks', 'open-blocks'],
-    ['open-assets', 'OpenAssets', 'open-assets'],
-    ['component-select', 'SelectComponent', 'select-comp'],
-    ['component-outline', 'SwitchVisibility', 'sw-visibility'],
-    ['component-offset', 'ShowOffset', 'show-offset'],
-    ['component-move', 'MoveComponent', 'move-comp'],
-    ['component-next', 'ComponentNext'],
-    ['component-prev', 'ComponentPrev'],
-    ['component-enter', 'ComponentEnter'],
-    ['component-exit', 'ComponentExit', 'select-parent'],
-    ['component-delete', 'ComponentDelete'],
-    ['component-style-clear', 'ComponentStyleClear'],
-    ['component-drag', 'ComponentDrag']
-  ];
 
   // Need it here as it would be used below
-  const add = function(id, obj) {
+  const add = function (id, obj) {
     if (isFunction(obj)) obj = { run: obj };
     if (!obj.stop) obj.noStop = 1;
     delete obj.initialize;
@@ -92,29 +109,29 @@ export default () => {
     init(config = {}) {
       c = {
         ...defaults,
-        ...config
+        ...config,
       };
       em = c.em;
       const ppfx = c.pStylePrefix;
       if (ppfx) c.stylePrefix = ppfx + c.stylePrefix;
 
       // Load commands passed via configuration
-      for (let k in c.defaults) {
+      Object.keys(c.defaults).forEach(k => {
         const obj = c.defaults[k];
         if (obj.id) this.add(obj.id, obj);
-      }
+      });
 
       defaultCommands['tlb-delete'] = {
         run(ed) {
           return ed.runCommand('core:component-delete');
-        }
+        },
       };
 
       defaultCommands['tlb-clone'] = {
         run(ed) {
           ed.runCommand('core:copy');
-          ed.runCommand('core:paste');
-        }
+          ed.runCommand('core:paste', { action: 'clone-component' });
+        },
       };
 
       defaultCommands['tlb-move'] = {
@@ -128,37 +145,48 @@ export default () => {
           const nativeDrag = event && event.type == 'dragstart';
           const defComOptions = { preserveSelected: 1 };
           const modes = ['absolute', 'translate'];
-          const hideTlb = () => em.stopDefault(defComOptions);
-          selAll.forEach(sel => sel.trigger('disable'));
-
-          // Dirty patch to prevent parent selection on drop (in absolute mode)
-          em.set('_cmpDrag', 1);
 
           if (!sel || !sel.get('draggable')) {
-            console.warn('The element is not draggable');
-            return;
+            return em.logWarning('The element is not draggable');
           }
 
           const mode = sel.get('dmode') || em.get('dmode');
+          const hideTlb = () => em.stopDefault(defComOptions);
+          const altMode = includes(modes, mode);
+          selAll.forEach(sel => sel.trigger('disable'));
 
           // Without setTimeout the ghost image disappears
           nativeDrag ? setTimeout(hideTlb, 0) : hideTlb();
 
-          const onEnd = (e, opts) => {
-            em.runDefault(defComOptions);
+          const onStart = data => {
+            em.trigger(`${eventDrag}:start`, data);
+          };
+          const onDrag = data => {
+            em.trigger(eventDrag, data);
+          };
+          const onEnd = (e, opts, data) => {
             selAll.forEach(sel => sel.set('status', 'selected'));
             ed.select(selAll);
             sel.emitUpdate();
+            em.trigger(`${eventDrag}:end`, data);
+
+            // Defer selectComponent in order to prevent canvas "freeze" #2692
+            setTimeout(() => em.runDefault(defComOptions));
+
+            // Dirty patch to prevent parent selection on drop
+            (altMode || data.cancelled) && em.set('_cmpDrag', 1);
           };
 
-          if (includes(modes, mode)) {
+          if (altMode) {
             // TODO move grabbing func in editor/canvas from the Sorter
             dragger = ed.runCommand('core:component-drag', {
               guidesInfo: 1,
               mode,
               target: sel,
+              onStart,
+              onDrag,
               onEnd,
-              event
+              event,
             });
           } else {
             if (nativeDrag) {
@@ -167,12 +195,14 @@ export default () => {
             }
 
             const cmdMove = ed.Commands.get('move-comp');
+            cmdMove.onStart = onStart;
+            cmdMove.onDrag = onDrag;
             cmdMove.onEndMoveFromModel = onEnd;
             cmdMove.initSorterFromModels(selAll);
           }
 
           selAll.forEach(sel => sel.set('status', 'freezed-selected'));
-        }
+        },
       };
 
       // Core commands
@@ -187,9 +217,7 @@ export default () => {
           defaultCommands[oldCmd] = cmd;
           // Propogate old commands (can be removed once we stop to call old commands)
           ['run', 'stop'].forEach(name => {
-            em.on(`${name}:${oldCmd}`, (...args) =>
-              em.trigger(`${name}:${cmdName}`, ...args)
-            );
+            em.on(`${name}:${oldCmd}`, (...args) => em.trigger(`${name}:${cmdName}`, ...args));
           });
         }
       });
@@ -259,13 +287,11 @@ export default () => {
       if (command) {
         const cmdObj = {
           ...command.constructor.prototype,
-          ...cmd
+          ...cmd,
         };
         this.add(id, cmdObj);
         // Extend also old name commands if exist
-        const oldCmd = commandsDef.filter(
-          cmd => `core:${cmd[0]}` === id && cmd[2]
-        )[0];
+        const oldCmd = commandsDef.filter(cmd => `core:${cmd[0]}` === id && cmd[2])[0];
         oldCmd && this.add(oldCmd[2], cmdObj);
       }
       return this;
@@ -370,7 +396,7 @@ export default () => {
         const editor = em.get('Editor');
 
         if (!this.isActive(id) || options.force || !c.strict) {
-          result = command.callRun(editor, options);
+          result = editor && command.callRun(editor, options);
           if (id && command.stop && !command.noStop && !options.abort) {
             active[id] = result;
           }
@@ -413,6 +439,10 @@ export default () => {
       if (!command.stop) command.noStop = 1;
       const cmd = CommandAbstract.extend(command);
       return new cmd(c);
-    }
+    },
+
+    destroy() {
+      [em, c, commands, defaultCommands, active].forEach(i => (i = {}));
+    },
   };
 };

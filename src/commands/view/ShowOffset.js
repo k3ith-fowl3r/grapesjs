@@ -1,5 +1,6 @@
 import Backbone from 'backbone';
-import { isTextNode } from 'utils/mixins';
+import { isUndefined } from 'underscore';
+import { isTextNode } from '../../utils/mixins';
 const $ = Backbone.$;
 
 export default {
@@ -15,32 +16,48 @@ export default {
     const zoom = this.em.getZoomDecimal();
     const el = opt.el || '';
 
-    if (
-      !config.showOffsets ||
-      isTextNode(el) ||
-      (!config.showOffsetsSelected && state == 'Fixed')
-    ) {
+    if (!config.showOffsets || isTextNode(el) || (!config.showOffsetsSelected && state == 'Fixed')) {
       editor.stopCommand(this.id, opts);
       return;
     }
 
     var canvas = editor.Canvas;
-    var pos = opt.elPos || canvas.getElementPos(el);
+    var pos = { ...(opt.elPos || canvas.getElementPos(el)) };
+
+    if (!isUndefined(opt.top)) {
+      pos.top = opt.top;
+    }
+    if (!isUndefined(opt.left)) {
+      pos.left = opt.left;
+    }
+
     var style = window.getComputedStyle(el);
     var ppfx = this.ppfx;
     var stateVar = state + 'State';
     var method = this.getOffsetMethod(state);
-    var offsetViewer = canvas[method]();
-    offsetViewer.style.display = 'block';
+    var offsetViewer = canvas[method](opts.view);
+    offsetViewer.style.opacity = '';
 
-    var marginT = this['marginT' + state];
-    var marginB = this['marginB' + state];
-    var marginL = this['marginL' + state];
-    var marginR = this['marginR' + state];
-    var padT = this['padT' + state];
-    var padB = this['padB' + state];
-    var padL = this['padL' + state];
-    var padR = this['padR' + state];
+    let marginT = this['marginT' + state];
+    let marginB = this['marginB' + state];
+    let marginL = this['marginL' + state];
+    let marginR = this['marginR' + state];
+    let padT = this['padT' + state];
+    let padB = this['padB' + state];
+    let padL = this['padL' + state];
+    let padR = this['padR' + state];
+
+    if (offsetViewer.childNodes.length) {
+      this[stateVar] = '1';
+      marginT = offsetViewer.querySelector('[data-offset-m-t]');
+      marginB = offsetViewer.querySelector('[data-offset-m-b]');
+      marginL = offsetViewer.querySelector('[data-offset-m-l]');
+      marginR = offsetViewer.querySelector('[data-offset-m-r]');
+      padT = offsetViewer.querySelector('[data-offset-p-t]');
+      padB = offsetViewer.querySelector('[data-offset-p-b]');
+      padL = offsetViewer.querySelector('[data-offset-p-l]');
+      padR = offsetViewer.querySelector('[data-offset-p-r]');
+    }
 
     if (!this[stateVar]) {
       var stateLow = state.toLowerCase();
@@ -85,8 +102,7 @@ export default {
     var marginLeftSt = parseFloat(style.marginLeft.replace(unit, '')) * zoom;
     var marginRightSt = parseFloat(style.marginRight.replace(unit, '')) * zoom;
     var marginTopSt = parseFloat(style.marginTop.replace(unit, '')) * zoom;
-    var marginBottomSt =
-      parseFloat(style.marginBottom.replace(unit, '')) * zoom;
+    var marginBottomSt = parseFloat(style.marginBottom.replace(unit, '')) * zoom;
     var mtStyle = marginT.style;
     var mbStyle = marginB.style;
     var mlStyle = marginL.style;
@@ -124,36 +140,38 @@ export default {
     // Padding style
     var padTop = parseFloat(style.paddingTop) * zoom;
     ptStyle.height = padTop + unit;
-    ptStyle.width = widthEl;
-    ptStyle.top = pos.top + unit;
-    ptStyle.left = posLeft + unit;
+    // ptStyle.width = widthEl;
+    // ptStyle.top = pos.top + unit;
+    // ptStyle.left = posLeft + unit;
 
     var padBot = parseFloat(style.paddingBottom) * zoom;
     pbStyle.height = padBot + unit;
-    pbStyle.width = widthEl;
-    pbStyle.top = pos.top + pos.height - padBot + unit;
-    pbStyle.left = posLeft + unit;
+    // pbStyle.width = widthEl;
+    // pbStyle.top = pos.top + pos.height - padBot + unit;
+    // pbStyle.left = posLeft + unit;
 
     var padSideH = pos.height - padBot - padTop + unit;
     var padSideT = pos.top + padTop + unit;
     plStyle.height = padSideH;
     plStyle.width = parseFloat(style.paddingLeft) * zoom + unit;
     plStyle.top = padSideT;
-    plStyle.left = pos.left + unit;
+    // plStyle.left = pos.left + unit;
+    //  plStyle.right = 0;
 
     var padRight = parseFloat(style.paddingRight) * zoom;
     prStyle.height = padSideH;
     prStyle.width = padRight + unit;
     prStyle.top = padSideT;
-    prStyle.left = pos.left + pos.width - padRight + unit;
+    // prStyle.left = pos.left + pos.width - padRight + unit;
+    //  prStyle.left = 0;
   },
 
-  stop(editor, sender, opts) {
+  stop(editor, sender, opts = {}) {
     var opt = opts || {};
     var state = opt.state || '';
     var method = this.getOffsetMethod(state);
     var canvas = editor.Canvas;
-    var offsetViewer = canvas[method]();
-    offsetViewer.style.display = 'none';
-  }
+    var offsetViewer = canvas[method](opts.view);
+    offsetViewer.style.opacity = 0;
+  },
 };

@@ -1,26 +1,23 @@
 import { isArray } from 'underscore';
 
 export default {
-  run(ed, sender, opts = {}) {
+  run(ed, s, opts = {}) {
+    const toSelect = [];
     let components = opts.component || ed.getSelectedAll();
     components = isArray(components) ? [...components] : [components];
 
-    // It's important to deselect components first otherwise,
-    // with undo, the component will be set with the wrong `collection`
-    ed.select(null);
-
-    components.forEach(component => {
-      if (!component || !component.get('removable')) {
-        console.warn('The element is not removable', component);
-        return;
+    components.filter(Boolean).forEach(component => {
+      if (!component.get('removable')) {
+        toSelect.push(component);
+        return this.em.logWarning('The element is not removable', {
+          component,
+        });
       }
-      if (component) {
-        const coll = component.collection;
-        component.trigger('component:destroy');
-        coll && coll.remove(component);
-      }
+      component.remove();
     });
 
+    ed.select(toSelect);
+
     return components;
-  }
+  },
 };

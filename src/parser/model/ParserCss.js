@@ -1,8 +1,5 @@
 import { isString } from 'underscore';
-import BrowserCssParser, {
-  parseSelector,
-  createNode
-} from './BrowserParserCss';
+import BrowserCssParser, { parseSelector, createNode } from './BrowserParserCss';
 
 export default (config = {}) => ({
   /**
@@ -12,10 +9,11 @@ export default (config = {}) => ({
    */
   parse(str) {
     let result = [];
-    const { parserCss, em = {} } = config;
+    const { parserCss, em } = config;
     const editor = em && em.get && em.get('Editor');
     const nodes = parserCss ? parserCss(str, editor) : BrowserCssParser(str);
     nodes.forEach(node => (result = result.concat(this.checkNode(node))));
+    em && em.trigger('parse:css', { input: str, output: result });
 
     return result;
   },
@@ -35,7 +33,7 @@ export default (config = {}) => ({
       const selectorsAdd = selsParsed.add.join(', ');
       const opts = {
         atRule: node.atRule,
-        mediaText: node.params
+        mediaText: node.params,
       };
 
       if (classSets.length) {
@@ -55,5 +53,5 @@ export default (config = {}) => ({
     }
 
     return node;
-  }
+  },
 });

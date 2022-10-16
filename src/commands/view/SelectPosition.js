@@ -7,12 +7,14 @@ export default {
    * @param {HTMLElement} trg
    * @private
    * */
-  startSelectPosition(trg, doc) {
+  startSelectPosition(trg, doc, opts = {}) {
     this.isPointed = false;
     var utils = this.editorModel.get('Utils');
+    const container = trg.ownerDocument.body;
+
     if (utils && !this.sorter)
       this.sorter = new utils.Sorter({
-        container: this.getCanvasBody(),
+        container,
         placer: this.canvas.getPlacerEl(),
         containerSel: '*',
         itemSel: '*',
@@ -23,9 +25,11 @@ export default {
         nested: 1,
         em: this.editorModel,
         canvasRelative: 1,
-        scale: () => this.em.getZoomDecimal()
+        scale: () => this.em.getZoomDecimal(),
       });
-    trg && this.sorter.startSort(trg);
+
+    if (opts.onStart) this.sorter.onStart = opts.onStart;
+    trg && this.sorter.startSort(trg, { container });
   },
 
   /**
@@ -47,19 +51,13 @@ export default {
    * */
   stopSelectPosition() {
     this.posTargetCollection = null;
-    this.posIndex =
-      this.posMethod == 'after' && this.cDim.length !== 0
-        ? this.posIndex + 1
-        : this.posIndex; //Normalize
+    this.posIndex = this.posMethod == 'after' && this.cDim.length !== 0 ? this.posIndex + 1 : this.posIndex; //Normalize
     if (this.sorter) {
       this.sorter.moved = 0;
       this.sorter.endMove();
     }
     if (this.cDim) {
-      this.posIsLastEl =
-        this.cDim.length !== 0 &&
-        this.posMethod == 'after' &&
-        this.posIndex == this.cDim.length;
+      this.posIsLastEl = this.cDim.length !== 0 && this.posMethod == 'after' && this.posIndex == this.cDim.length;
       this.posTargetEl =
         this.cDim.length === 0
           ? $(this.outsideElem)
@@ -92,12 +90,7 @@ export default {
     var m = method || 'before';
     var len = dims.length;
     var isLast = len !== 0 && m == 'after' && i == len;
-    if (
-      len !== 0 &&
-      ((!isLast && !dims[i][4]) ||
-        (dims[i - 1] && !dims[i - 1][4]) ||
-        (isLast && !dims[i - 1][4]))
-    )
+    if (len !== 0 && ((!isLast && !dims[i][4]) || (dims[i - 1] && !dims[i - 1][4]) || (isLast && !dims[i - 1][4])))
       return 1;
     return 0;
   },
@@ -110,5 +103,5 @@ export default {
     this.stopSelectPosition();
     this.$wrapper.css('cursor', '');
     this.$wrapper.unbind();
-  }
+  },
 };

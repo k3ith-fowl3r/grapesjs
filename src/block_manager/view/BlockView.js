@@ -1,15 +1,17 @@
-import Backbone from 'backbone';
-import { isObject } from 'underscore';
-import { on, off, hasDnd } from 'utils/mixins';
+import { isFunction } from 'underscore';
+import { View } from '../../common';
+import { on, off, hasDnd } from '../../utils/mixins';
 
-export default Backbone.View.extend({
-  events: {
-    click: 'handleClick',
-    mousedown: 'startDrag',
-    dragstart: 'handleDragStart',
-    drag: 'handleDrag',
-    dragend: 'handleDragEnd'
-  },
+export default class BlockView extends View {
+  events() {
+    return {
+      click: 'handleClick',
+      mousedown: 'startDrag',
+      dragstart: 'handleDragStart',
+      drag: 'handleDrag',
+      dragend: 'handleDragEnd',
+    };
+  }
 
   initialize(o, config = {}) {
     const { model } = this;
@@ -19,16 +21,26 @@ export default Backbone.View.extend({
     this.ppfx = config.pStylePrefix || '';
     this.listenTo(model, 'destroy remove', this.remove);
     this.listenTo(model, 'change', this.render);
-  },
+  }
 
-  handleClick() {
+  __getModule() {
+    return this.em.get('BlockManager');
+  }
+
+  handleClick(ev) {
     const { config, model, em } = this;
-    if (!config.appendOnClick) return;
+    const onClick = model.get('onClick') || config.appendOnClick;
+    em.trigger('block:click', model, ev);
+    if (!onClick) {
+      return;
+    } else if (isFunction(onClick)) {
+      return onClick(model, em.getEditor(), { event: ev });
+    }
     const sorter = config.getSorter();
     const content = model.get('content');
     const selected = em.getSelected();
     sorter.setDropContent(content);
-    let target, valid;
+    let target, valid, insertAt;
 
     // If there is a selected component, try first to append
     // the block inside, otherwise, try to place it as a next sibling
@@ -40,7 +52,10 @@ export default Backbone.View.extend({
       } else {
         const parent = selected.parent();
         valid = sorter.validTarget(parent.getEl(), content);
-        if (valid.valid) target = parent;
+        if (valid.valid) {
+          target = parent;
+          insertAt = parent.components().indexOf(selected) + 1;
+        }
       }
     }
 
@@ -51,74 +66,38 @@ export default Backbone.View.extend({
       if (valid.valid) target = wrapper;
     }
 
-    const result = target && target.append(content)[0];
+    const result = target && target.append(content, { at: insertAt })[0];
     result && em.setSelected(result, { scroll: 1 });
-  },
+  }
 
   /**
    * Start block dragging
    * @private
    */
   startDrag(e) {
-    const { config, em } = this;
+    const { config, em, model } = this;
+    const disable = model.get('disable');
     //Right or middel click
-    if (e.button !== 0 || !config.getSorter || this.el.draggable) return;
+    if (e.button !== 0 || !config.getSorter || this.el.draggable || disable) return;
     em.refreshCanvas();
     const sorter = config.getSorter();
     sorter.setDragHelper(this.el, e);
     sorter.setDropContent(this.model.get('content'));
     sorter.startSort(this.el);
     on(document, 'mouseup', this.endDrag);
-  },
+  }
 
   handleDragStart(ev) {
-    const { em, model } = this;
-    const content = model.get('content');
-    const isObj = isObject(content);
-    const data = isObj ? JSON.stringify(content) : content;
-    em.set('dragResult');
-
-    // Note: data are not available on dragenter for security reason,
-    // we have to use dragContent as we need it for the Sorter context
-    // IE11 supports only 'text' data type
-    ev.dataTransfer.setData('text', data);
-    em.set('dragContent', content);
-    em.trigger('block:drag:start', model, ev);
-  },
+    this.__getModule().__startDrag(this.model, ev);
+  }
 
   handleDrag(ev) {
-    this.em.trigger('block:drag', this.model, ev);
-  },
+    this.__getModule().__drag(ev);
+  }
 
   handleDragEnd() {
-    const { em, model } = this;
-    const result = em.get('dragResult');
-
-    if (result) {
-      const oldKey = 'activeOnRender';
-      const oldActive = result.get && result.get(oldKey);
-
-      if (model.get('activate') || oldActive) {
-        result.trigger('active');
-        result.set(oldKey, 0);
-      }
-
-      if (model.get('select')) {
-        em.setSelected(result);
-      }
-
-      if (model.get('resetId')) {
-        result.onAll(model => model.resetId());
-      }
-    }
-
-    em.set({
-      dragResult: null,
-      dragContent: null
-    });
-
-    em.trigger('block:drag:stop', result, model);
-  },
+    this.__getModule().__endDrag();
+  }
 
   /**
    * Drop block
@@ -134,24 +113,28 @@ export default Backbone.View.extend({
     // the block helper I use the trick of 'moved = 0' to void those errors.
     sorter.moved = 0;
     sorter.endMove();
-  },
+  }
 
   render() {
-    const { em, el, ppfx, model } = this;
+    const { em, el, $el, ppfx, model } = this;
+    const disable = model.get('disable');
+    const attr = model.get('attributes') || {};
+    const cls = attr.class || '';
     const className = `${ppfx}block`;
-    const label =
-      (em && em.t(`blockManager.labels.${model.id}`)) || model.get('label');
+    const label = (em && em.t(`blockManager.labels.${model.id}`)) || model.get('label');
     const render = model.get('render');
     const media = model.get('media');
-    el.className += ` ${className} ${ppfx}one-bg ${ppfx}four-color-h`;
+    const clsAdd = disable ? `${className}--disable` : `${ppfx}four-color-h`;
+    $el.attr(attr);
+    el.className = `${cls} ${className} ${ppfx}one-bg ${clsAdd}`.trim();
     el.innerHTML = `
       ${media ? `<div class="${className}__media">${media}</div>` : ''}
       <div class="${className}-label">${label}</div>
     `;
-    el.title = el.textContent.trim();
-    hasDnd(em) && el.setAttribute('draggable', true);
+    el.title = attr.title || el.textContent.trim();
+    el.setAttribute('draggable', hasDnd(em) && !disable ? true : false);
     const result = render && render({ el, model, className, prefix: ppfx });
     if (result) el.innerHTML = result;
     return this;
   }
-});
+}

@@ -4,28 +4,28 @@ import { capitalize } from 'utils/mixins';
 
 const $ = Backbone.$;
 
-export default Backbone.View.extend({
-  events: {},
-  eventCapture: ['change'],
+export default class TraitView extends Backbone.View {
+  events = {};
 
-  appendInput: 1,
+  appendInput = true;
 
   attributes() {
     return this.model.get('attributes');
-  },
+  }
 
   templateLabel() {
     const { ppfx } = this;
     const label = this.getLabel();
     return `<div class="${ppfx}label" title="${label}">${label}</div>`;
-  },
+  }
 
   templateInput() {
     const { clsField } = this;
     return `<div class="${clsField}" data-input></div>`;
-  },
+  }
 
-  initialize(o = {}) {
+  constructor(o = {}) {
+    super(o);
     const { config = {} } = o;
     const { model, eventCapture } = this;
     const { target } = model;
@@ -37,38 +37,40 @@ export default Backbone.View.extend({
     this.target = target;
     const { ppfx } = this;
     this.clsField = `${ppfx}field ${ppfx}field-${type}`;
-    [['change:value', this.onValueChange], ['remove', this.removeView]].forEach(
-      ([event, clb]) => {
-        model.off(event, clb);
-        this.listenTo(model, event, clb);
-      }
-    );
+    [
+      ['change:value', this.onValueChange],
+      ['remove', this.removeView],
+    ].forEach(([event, clb]) => {
+      model.off(event, clb);
+      this.listenTo(model, event, clb);
+    });
     model.view = this;
     this.listenTo(model, 'change:label', this.render);
     this.listenTo(model, 'change:placeholder', this.rerender);
+    this.events = {};
     eventCapture.forEach(event => (this.events[event] = 'onChange'));
     this.delegateEvents();
     this.init();
-  },
+  }
 
   getClbOpts() {
     return {
       component: this.target,
       trait: this.model,
-      elInput: this.getInputElem()
+      elInput: this.getInputElem(),
     };
-  },
+  }
 
   removeView() {
     this.remove();
     this.removed();
-  },
+  }
 
-  init() {},
-  removed() {},
-  onRender() {},
-  onUpdate() {},
-  onEvent() {},
+  init() {}
+  removed() {}
+  onRender() {}
+  onUpdate() {}
+  onEvent() {}
 
   /**
    * Fires when the input is changed
@@ -81,18 +83,18 @@ export default Backbone.View.extend({
     }
     this.onEvent({
       ...this.getClbOpts(),
-      event
+      event,
     });
-  },
+  }
 
   getValueForTarget() {
     return this.model.get('value');
-  },
+  }
 
   setInputValue(value) {
     const el = this.getInputElem();
     el && (el.value = value);
-  },
+  }
 
   /**
    * On change callback
@@ -106,7 +108,7 @@ export default Backbone.View.extend({
       const val = this.getValueForTarget();
       model.setTargetValue(val, opts);
     }
-  },
+  }
 
   /**
    * Render label
@@ -122,12 +124,12 @@ export default Backbone.View.extend({
         this.createLabel({
           label,
           component: target,
-          trait: this
+          trait: this,
         }) || '';
     }
 
     $el.find('[data-label]').append(tpl);
-  },
+  }
 
   /**
    * Returns label for the input
@@ -137,18 +139,15 @@ export default Backbone.View.extend({
   getLabel() {
     const { em } = this;
     const { label, name } = this.model.attributes;
-    return (
-      em.t(`traitManager.traits.labels.${name}`) ||
-      capitalize(label || name).replace(/-/g, ' ')
-    );
-  },
+    return em.t(`traitManager.traits.labels.${name}`) || capitalize(label || name).replace(/-/g, ' ');
+  }
 
   /**
    * Returns current target component
    */
   getComponent() {
     return this.target;
-  },
+  }
 
   /**
    * Returns input element
@@ -185,14 +184,12 @@ export default Backbone.View.extend({
       this.$input = input;
     }
     return this.$input.get(0);
-  },
+  }
 
   getInputElem() {
     const { input, $input } = this;
-    return (
-      input || ($input && $input.get && $input.get(0)) || this.getElInput()
-    );
-  },
+    return input || ($input && $input.get && $input.get(0)) || this.getElInput();
+  }
 
   getModelValue() {
     let value;
@@ -208,11 +205,11 @@ export default Backbone.View.extend({
     }
 
     return !isUndefined(value) ? value : '';
-  },
+  }
 
   getElInput() {
     return this.elInput;
-  },
+  }
 
   /**
    * Renders input
@@ -225,9 +222,7 @@ export default Backbone.View.extend({
     let tpl = model.el;
 
     if (!tpl) {
-      tpl = this.createInput
-        ? this.createInput(this.getClbOpts())
-        : this.getInputEl();
+      tpl = this.createInput ? this.createInput(this.getClbOpts()) : this.getInputEl();
     }
 
     if (isString(tpl)) {
@@ -239,29 +234,29 @@ export default Backbone.View.extend({
     }
 
     model.el = this.elInput;
-  },
+  }
 
   hasLabel() {
     const { label } = this.model.attributes;
     return !this.noLabel && label !== false;
-  },
+  }
 
   rerender() {
     this.model.el = null;
     this.render();
-  },
+  }
 
   postUpdate() {
     this.onUpdate(this.getClbOpts());
-  },
+  }
 
   render() {
     const { $el, pfx, ppfx, model } = this;
-    const { type } = model.attributes;
+    const { type, id } = model.attributes;
     const hasLabel = this.hasLabel && this.hasLabel();
     const cls = `${pfx}trait`;
     this.$input = null;
-    let tmpl = `<div class="${cls}">
+    let tmpl = `<div class="${cls} ${cls}--${type}">
       ${hasLabel ? `<div class="${ppfx}label-wrp" data-label></div>` : ''}
       <div class="${ppfx}field-wrp ${ppfx}field-wrp--${type}" data-input>
         ${
@@ -276,9 +271,10 @@ export default Backbone.View.extend({
     $el.empty().append(tmpl);
     hasLabel && this.renderLabel();
     this.renderField();
-    this.el.className = `${cls}__wrp`;
+    this.el.className = `${cls}__wrp ${cls}__wrp-${id}`;
     this.postUpdate();
     this.onRender(this.getClbOpts());
     return this;
   }
-});
+}
+TraitView.prototype.eventCapture = ['change'];

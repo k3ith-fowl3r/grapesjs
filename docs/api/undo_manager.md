@@ -9,20 +9,20 @@ Once the editor is instantiated you can use its API. Before using these methods 
 const um = editor.UndoManager;
 ```
 
--   [getConfig][1]
--   [add][2]
--   [remove][3]
--   [removeAll][4]
--   [start][5]
--   [stop][6]
--   [undo][7]
--   [undoAll][8]
--   [redo][9]
--   [redoAll][10]
--   [hasUndo][11]
--   [hasRedo][12]
--   [getStack][13]
--   [clear][14]
+*   [getConfig][1]
+*   [add][2]
+*   [remove][3]
+*   [removeAll][4]
+*   [start][5]
+*   [stop][6]
+*   [undo][7]
+*   [undoAll][8]
+*   [redo][9]
+*   [redoAll][10]
+*   [hasUndo][11]
+*   [hasRedo][12]
+*   [getStack][13]
+*   [clear][14]
 
 ## getConfig
 
@@ -44,7 +44,7 @@ Note: New Components and CSSRules will be added automatically
 
 ### Parameters
 
--   `entity` **(Model | Collection)** Entity to track
+*   `entity` **(Model | Collection)** Entity to track
 
 ### Examples
 
@@ -60,7 +60,7 @@ Remove and stop tracking the entity (Model/Collection)
 
 ### Parameters
 
--   `entity` **(Model | Collection)** Entity to remove
+*   `entity` **(Model | Collection)** Entity to remove
 
 ### Examples
 
@@ -110,6 +110,10 @@ Returns **this**
 
 Undo last change
 
+### Parameters
+
+*   `all`   (optional, default `true`)
+
 ### Examples
 
 ```javascript
@@ -133,6 +137,10 @@ Returns **this**
 ## redo
 
 Redo last change
+
+### Parameters
+
+*   `all`   (optional, default `true`)
 
 ### Examples
 
@@ -175,6 +183,18 @@ Checks if exists an available redo
 ```javascript
 um.hasRedo();
 ```
+
+Returns **[Boolean][16]** 
+
+## isRegistered
+
+Check if the entity (Model/Collection) to tracked
+Note: New Components and CSSRules will be added automatically
+
+### Parameters
+
+*   `obj`  
+*   `entity` **(Model | Collection)** Entity to track
 
 Returns **[Boolean][16]** 
 

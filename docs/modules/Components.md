@@ -4,7 +4,7 @@ title: Component Manager
 
 # Component Manager
 
-The Component is a base element of the template. It might be something simple and atomic like an image or a text box, but also complex structures, more probably composed by other components, like sections or pages. The concept of the component was made to allow the developer to bind different behaviors to different elements. For example, opening the Asset Manager on double click of the image is a custom behavior binded to that particular type of element.
+The Component is a base element of the template. It might be something simple and atomic like an image or a text box, but also complex structures, more probably composed by other components, like sections or pages. The concept of the component was made to allow the developer to bind different behaviors to different elements. For example, opening the Asset Manager on double click of the image is a custom behavior bound to that particular type of element.
 
 ::: warning
 This guide is referring to GrapesJS v0.15.8 or higher
@@ -42,7 +42,7 @@ editor.getWrapper().append(`<div>...`);
 ```
 
 ::: tip
-If you need to append a component in at a specific position, you can use `at` option. So, to add a component on top of all others (in the same collection) you would use
+If you need to append a component at a specific position, you can use `at` option. So, to add a component on top of all others (in the same collection) you would use
 ```js
 component.append('<div>...', { at: 0 })
 ```
@@ -72,14 +72,14 @@ In the first step, the HTML string is parsed and transformed to what is called *
       attributes: { title: 'foo' },
       components: [{
         type: 'textnode',
-        content: 'Hello wdsforld!!!'
+        content: 'Hello world!!!'
       }]
     }
   ]
 }
 ```
 
-The real **Component Definition** would be a little bit bigger so so we'd reduced the JSON for the sake of simplicity.
+The real **Component Definition** would be a little bit bigger so we've reduced the JSON for the sake of simplicity.
 
 You might notice the result is similar to what is generally called a **Virtual DOM**, a lightweight representation of the DOM element. This actually helps the editor to keep track of the state of our elements and make performance-friendly changes/updates.
 The meaning of properties like `tagName`, `attributes` and `components` are quite obvious, but what about `type`?! This particular property specifies the **Component Type** of our **Component Definition** (you check the list of default components [below](#built-in-component-types)) and if it's omitted, the default one will be used `type: 'default'`.
@@ -684,10 +684,10 @@ use of them for a more generic use case or also listen to them inside other comp
 
 Let's see below the flow of all hooks:
 
-* **Local hook**: `model.init()` method, executed once the model of the component is initiliazed
+* **Local hook**: `model.init()` method, executed once the model of the component is initialized
 * **Global hook**: `component:create` event, called right after `model.init()`. The model is passed as an argument to the callback function.
   Es. `editor.on('component:create', model => console.log('created', model))`
-* **Local hook**: `view.init()` method, executed once the view of the component is initiliazed
+* **Local hook**: `view.init()` method, executed once the view of the component is initialized
 * **Local hook**: `view.onRender()` method, executed once the component is rendered on the canvas
 * **Global hook**: `component:mount` event, called right after `view.onRender()`. The model is passed as an argument to the callback function.
 * **Local hook**: `model.updated()` method, executes when some property of the model is updated.
@@ -747,6 +747,115 @@ editor.on(`component:remove`, model => console.log('Global hook: component:remov
 
 
 
+## Components & CSS
+
+::: warning
+This section is referring to GrapesJS v0.17.27 or higher
+:::
+
+If you need to add component-related styles, you can do it via `styles` property.
+
+```js
+domc.addType('component-css', {
+  model: {
+    defaults: {
+      attributes: { class: 'cmp-css' },
+      components: `
+        <span>Component with styles<span>
+        <div class="cmp-css-a">Component A</div>
+        <div class="cmp-css-b">Component B</div>
+      `,
+      styles: `
+        .cmp-css { color: red }
+        .cmp-css-a { color: green }
+        .cmp-css-b { color: blue }
+
+        @media (max-width: 992px) {
+          .cmp-css{ color: darkred; }
+          .cmp-css-a { color: darkgreen }
+          .cmp-css-b { color: darkblue }
+        }
+      `,
+    },
+  },
+});
+```
+This approach allows the editor to group these styles ([CssRule] instances) and remove them accordingly in case all references of the same component are removed.
+
+::: danger Important caveat
+&nbsp;
+:::
+
+In the example above we used one custom component and default sub-components. Styles are declared on our custom component only, that means if you remove all `.cmp-css-a` and `.cmp-css-b` instances from the canvas, their CssRules will still be stored in the project (**here we're not talking about the CSS export, which is able to skip not used rules, but instances stored in your project JSON**).
+
+The cleanest approach would be to follow component-oriented styling, where you declare styles only in the scope of the component itself. This is how it would look like with the example above.
+
+```js
+domc.addType('cmp-a', {
+  model: {
+    defaults: {
+      attributes: { class: 'cmp-css-a' },
+      components: 'Component A',
+      styles: `
+        .cmp-css-a { color: green }
+        @media (max-width: 992px) {
+          .cmp-css-a { color: darkgreen }
+        }
+      `,
+    }
+  },
+});
+domc.addType('cmp-b', {
+  model: {
+    defaults: {
+      attributes: { class: 'cmp-css-b' },
+      components: 'Component B',
+      styles: `
+        .cmp-css-b { color: blue }
+        @media (max-width: 992px) {
+          .cmp-css-b { color: darkblue }
+        }
+      `,
+    }
+  },
+});
+domc.addType('component-css', {
+  model: {
+    defaults: {
+      attributes: { class: 'cmp-css' },
+      components: [
+        '<span>Component with styles<span>',
+        { type: 'cmp-a' },
+        { type: 'cmp-b' },
+      ],
+      styles: `
+        .cmp-css { color: red }
+        @media (max-width: 992px) {
+          .cmp-css{ color: darkred; }
+        }
+      `,
+    },
+  },
+});
+```
+::: tip Component-first styling
+By default, when you select a component in the canvas and apply styles on it, changes will be applied on its existent classes. This will result on changing of all the components with those applied classes. If you need the style to be applied only on the specific selected component you have to select componentFirst strategy in this way.
+```js
+grapesjs.init({
+  ...
+  selectorManager: {
+    componentFirst: true,
+  },
+})
+```
+:::
+
+### External CSS
+
+If you need to load external component-specific CSS, you have to rely on the `script` property. For more details please refer to [Components & JS](Components-js.html).
+
+
+
 ## Components & JS
 
 If you want to know how to create Components with javascript attached (eg. counters, galleries, slideshows, etc.) check the dedicated page
@@ -763,7 +872,7 @@ If you want to know how to create Components with javascript attached (eg. count
 If you're importing big chunks of HTML string into the editor (eg. defined via Blocks) JSX might be a great compromise between perfomances and code readibility as it allows you to skip the parsing and the component recognition steps by keeping the HTML syntax.
 By default, GrapesJS understands objects generated from React JSX preset, so, if you're working in the React app probably you're already using JSX and you don't need to do anything else, your environment is already configured to parse JSX in javascript files.
 
-So, intead of writing this:
+So, instead of writing this:
 ```js
 // I'm adding a string, so the parsing and the component recognition steps will be executed
 editor.addComponents(`<div>
@@ -839,4 +948,5 @@ For Babel users, it's just a matter of adding few plugins: `@babel/plugin-syntax
 
   [Component Definition]: <#component-definition>
   [Component]: </api/component.html>
+  [CssRule]: </api/css_rule.html>
   [Component API]: </api/component.html>

@@ -1,24 +1,26 @@
 import DomComponents from 'dom_components';
 import ComponentsView from 'dom_components/view/ComponentsView';
 import Components from 'dom_components/model/Components';
+import Editor from 'editor/model/Editor';
 
 describe('ComponentsView', () => {
-  var $fixtures;
-  var $fixture;
   var model;
   var view;
   var dcomp;
   var compOpts;
+  const em = new Editor();
 
   beforeEach(() => {
-    dcomp = new DomComponents();
+    dcomp = new DomComponents(em);
     compOpts = {
-      componentTypes: dcomp.componentTypes
+      em,
+      componentTypes: dcomp.componentTypes,
     };
     model = new Components([], compOpts);
     view = new ComponentsView({
       collection: model,
-      componentTypes: dcomp.componentTypes
+      componentTypes: dcomp.componentTypes,
+      config: { em },
     });
     document.body.innerHTML = '<div id="fixtures"></div>';
     document.body.querySelector('#fixtures').appendChild(view.render().el);
