@@ -26,16 +26,9 @@ const um = editor.UndoManager;
 
 ## getConfig
 
-Get module configurations
+Get configuration object
 
-### Examples
-
-```javascript
-const config = um.getConfig();
-// { ... }
-```
-
-Returns **[Object][15]** Configuration object
+Returns **[Object][15]** 
 
 ## add
 
@@ -193,7 +186,7 @@ Note: New Components and CSSRules will be added automatically
 
 ### Parameters
 
-*   `obj`  
+*   `obj` **any** 
 *   `entity` **(Model | Collection)** Entity to track
 
 Returns **[Boolean][16]** 

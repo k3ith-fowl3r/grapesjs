@@ -1,5 +1,5 @@
 import { isString, bindAll } from 'underscore';
-import { View } from '../../common';
+import { View, ViewOptions } from '../../common';
 import { getModel, isEscKey, isEnterKey } from '../../utils/mixins';
 import ComponentView from '../../dom_components/view/ComponentView';
 import Component, { eventDrag } from '../../dom_components/model/Component';
@@ -7,7 +7,7 @@ import ItemsView from './ItemsView';
 import EditorModel from '../../editor/model/Editor';
 import LayerManager from '../index';
 
-export type ItemViewProps = Backbone.ViewOptions & {
+export type ItemViewProps = ViewOptions & {
   ItemView: ItemView;
   level: number;
   config: any;
@@ -50,7 +50,7 @@ export default class ItemView extends View {
     const icon = model.getIcon();
     const clsBase = `${pfx}layer`;
     const { icons } = em?.getConfig();
-    const { move, eye, eyeOff, chevron } = icons;
+    const { move, eye, eyeOff, chevron } = icons!;
 
     return `
       ${
@@ -80,7 +80,7 @@ export default class ItemView extends View {
   }
 
   public get ppfx(): string {
-    return this.em.getConfig().stylePrefix;
+    return this.em.getConfig().stylePrefix!;
   }
 
   public get pfx(): string {
@@ -91,7 +91,7 @@ export default class ItemView extends View {
   module: any;
   config: any;
   sorter: any;
-  // @ts-ignore
+  /** @ts-ignore */
   model!: Component;
   parentView: ItemView;
   items?: ItemsView;
@@ -274,7 +274,7 @@ export default class ItemView extends View {
     const { model, module } = this;
     ev?.stopImmediatePropagation();
 
-    if (!model.get('components').length) return;
+    if (!model.get('components')!.length) return;
 
     module.setOpen(model, !module.isOpen(model));
   }
@@ -329,7 +329,7 @@ export default class ItemView extends View {
     ComponentView.prototype.updateStatus.apply(this, [
       {
         avoidHover: !this.config.highlightHover,
-        noExtHl: 1,
+        noExtHl: true,
       },
     ]);
   }

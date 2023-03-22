@@ -53,7 +53,7 @@ Add/update the CssRule.
 ### Parameters
 
 *   `selectors` **[String][8]** Selector string, eg. `.myclass`
-*   `style` **[Object][10]** Style properties and values
+*   `style` **[Object][10]** Style properties and values (optional, default `{}`)
 *   `opts` **[Object][10]** Additional properties (optional, default `{}`)
 
     *   `opts.atRuleType` **[String][8]** At-rule type, eg. `media` (optional, default `''`)
@@ -131,7 +131,7 @@ Remove rule, by CssRule or matching selector (eg. the selector will match also a
 ### Parameters
 
 *   `rule` **([String][8] | [CssRule] | [Array][9]<[CssRule]>)** CssRule or matching selector.
-*   `opts`  
+*   `opts` **any?** 
 
 ### Examples
 
@@ -155,7 +155,7 @@ Remove all rules
 
 Returns **this** 
 
-[1]: https://github.com/artf/grapesjs/blob/master/src/css_composer/config/config.js
+[1]: https://github.com/GrapesJS/grapesjs/blob/master/src/css_composer/config/config.ts
 
 [2]: #addrules
 

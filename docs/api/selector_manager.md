@@ -134,7 +134,7 @@ Remove Selector.
 ### Parameters
 
 *   `selector` **([String][18] | [Selector])** Selector instance or Selector string identifier
-*   `opts` **any?** 
+*   `opts` **RemoveOptions?** 
 
 ### Examples
 
@@ -207,6 +207,19 @@ console.log(selected.map(s => s.toString()))
 
 Returns **[Array][20]<[Selector]>** 
 
+## getSelectedAll
+
+Get selected selectors.
+
+### Examples
+
+```javascript
+const selected = selectorManager.getSelectedAll();
+console.log(selected.map(s => s.toString()))
+```
+
+Returns **[Array][20]<[Selector]>** 
+
 ## addSelected
 
 Add new selector to all selected components.
@@ -270,7 +283,7 @@ Get all selectors
 
 Returns **Collection<[Selector]>** 
 
-[1]: https://github.com/artf/grapesjs/blob/master/src/selector_manager/config/config.js
+[1]: https://github.com/GrapesJS/grapesjs/blob/master/src/selector_manager/config/config.ts
 
 [2]: #getconfig
 

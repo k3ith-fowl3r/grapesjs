@@ -1,5 +1,5 @@
 /**
- * With this module is possible to manage components inside the canvas. You can customize the initial state of the module from the editor initialization, by passing the following [Configuration Object](https://github.com/artf/grapesjs/blob/master/src/dom_components/config/config.js)
+ * With this module is possible to manage components inside the canvas. You can customize the initial state of the module from the editor initialization, by passing the following [Configuration Object](https://github.com/GrapesJS/grapesjs/blob/master/src/dom_components/config/config.ts)
  * ```js
  * const editor = grapesjs.init({
  *  domComponents: {
@@ -97,7 +97,25 @@ import ComponentFrame from './model/ComponentFrame';
 import ComponentFrameView from './view/ComponentFrameView';
 import { ItemManagerModule } from '../abstract/Module';
 import EditorModel from '../editor/model/Editor';
-import { Model } from 'backbone';
+import { ComponentAdd } from './model/types';
+
+export type ComponentEvent =
+  | 'component:create'
+  | 'component:mount'
+  | 'component:add'
+  | 'component:remove'
+  | 'component:remove:before'
+  | 'component:clone'
+  | 'component:update'
+  | 'component:styleUpdate'
+  | 'component:selected'
+  | 'component:deselected'
+  | 'component:toggled'
+  | 'component:type:add'
+  | 'component:type:update'
+  | 'component:drag:start'
+  | 'component:drag'
+  | 'component:drag:end';
 
 export default class ComponentManager extends ItemManagerModule {
   componentTypes = [
@@ -246,8 +264,8 @@ export default class ComponentManager extends ItemManagerModule {
 
     // Load dependencies
     if (em) {
-      this.config.modal = em.get('Modal') || '';
-      this.config.am = em.get('AssetManager') || '';
+      this.config.modal = em.Modal || '';
+      this.config.am = em.Assets || '';
       em.get('Parser').compTypes = this.componentTypes;
       em.on('change:componentHovered', this.componentHovered, this);
 
@@ -262,11 +280,11 @@ export default class ComponentManager extends ItemManagerModule {
   load(data: any) {
     return this.loadProjectData(data, {
       onResult: (result: Component) => {
-        let wrapper = this.getWrapper();
+        let wrapper = this.getWrapper()!;
 
         if (!wrapper) {
-          this.em.get('PageManager').add({}, { select: true });
-          wrapper = this.getWrapper();
+          this.em.Pages.add({}, { select: true });
+          wrapper = this.getWrapper()!;
         }
 
         if (isArray(result)) {
@@ -290,10 +308,10 @@ export default class ComponentManager extends ItemManagerModule {
    * @return {Object}
    * @private
    */
-  getComponent(): Component {
-    const sel = this.em.get('PageManager').getSelected();
-    const frame = sel && sel.getMainFrame();
-    return frame && frame.getComponent();
+  getComponent() {
+    const sel = this.em.Pages.getSelected();
+    const frame = sel?.getMainFrame();
+    return frame?.getComponent();
   }
 
   /**
@@ -339,7 +357,7 @@ export default class ComponentManager extends ItemManagerModule {
    */
   getComponents(): Components {
     const wrp = this.getWrapper();
-    return wrp && wrp.get('components');
+    return wrp?.get('components')!;
   }
 
   /**
@@ -371,7 +389,7 @@ export default class ComponentManager extends ItemManagerModule {
    *   attributes: { title: 'here' }
    * });
    */
-  addComponent(component: Component, opt = {}) {
+  addComponent(component: ComponentAdd, opt = {}) {
     return this.getComponents().add(component, opt);
   }
 
@@ -571,7 +589,7 @@ export default class ComponentManager extends ItemManagerModule {
     if (!shallow && em) {
       const shallowEm = em.shallow;
       if (!shallowEm) return;
-      const domc = shallowEm.get('DomComponents');
+      const domc = shallowEm.Components;
       domc.componentTypes = this.componentTypes;
       shallow = domc.getWrapper();
       if (shallow) {
@@ -614,7 +632,7 @@ export default class ComponentManager extends ItemManagerModule {
 
     if (!srcModel) {
       const wrapper = this.getShallowWrapper();
-      srcModel = wrapper?.append(source)[0];
+      srcModel = wrapper?.append(source)[0] || null;
     }
 
     //@ts-ignore

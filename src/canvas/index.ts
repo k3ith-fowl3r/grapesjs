@@ -1,5 +1,5 @@
 /**
- * You can customize the initial state of the module from the editor initialization, by passing the following [Configuration Object](https://github.com/artf/grapesjs/blob/master/src/canvas/config/config.js)
+ * You can customize the initial state of the module from the editor initialization, by passing the following [Configuration Object](https://github.com/GrapesJS/grapesjs/blob/master/src/canvas/config/config.ts)
  * ```js
  * const editor = grapesjs.init({
  *  canvas: {
@@ -47,19 +47,19 @@
  * @module Canvas
  */
 
-import { AddOptions } from 'backbone';
 import { isUndefined } from 'underscore';
 import { Module } from '../abstract';
-import ComponentView from '../dom_components/view/ComponentView';
 import EditorModel from '../editor/model/Editor';
 import { getElement, getViewEl } from '../utils/mixins';
-import defaults from './config/config';
+import defaults, { CanvasConfig } from './config/config';
 import Canvas from './model/Canvas';
 import Frame from './model/Frame';
 import CanvasView from './view/CanvasView';
 import FrameView from './view/FrameView';
 
-export default class CanvasModule extends Module<typeof defaults> {
+export type CanvasEvent = 'canvas:dragenter' | 'canvas:dragover' | 'canvas:drop' | 'canvas:dragend' | 'canvas:dragdata';
+
+export default class CanvasModule extends Module<CanvasConfig> {
   /**
    * Get configuration object
    * @name getConfig
@@ -178,7 +178,7 @@ export default class CanvasModule extends Module<typeof defaults> {
    * @returns {HTMLElement}
    * @private
    */
-  getToolsEl(compView: any) {
+  getToolsEl(compView?: any) {
     return this._getLocalEl(this.getCanvasView().toolsEl, compView, 'getToolsEl');
   }
 
@@ -187,7 +187,7 @@ export default class CanvasModule extends Module<typeof defaults> {
    * @returns {HTMLElement}
    * @private
    */
-  getHighlighter(compView: any) {
+  getHighlighter(compView?: any) {
     return this._getLocalEl(this.getCanvasView().hlEl, compView, 'getHighlighter');
   }
 
@@ -522,8 +522,7 @@ export default class CanvasModule extends Module<typeof defaults> {
   isInputFocused() {
     const doc = this.getDocument();
     const frame = this.getFrameEl();
-    //console.log(this.config)
-    const toIgnore = ['body', ...this.config.notTextable];
+    const toIgnore = ['body', ...this.config.notTextable!];
     const docActive = frame && document.activeElement === frame;
     const focused = docActive ? doc && doc.activeElement : document.activeElement;
 

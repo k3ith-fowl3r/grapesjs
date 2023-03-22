@@ -224,9 +224,8 @@ export default class FileUploaderView extends View {
     const c = this.config;
     const em = ev.model;
     const edEl = ev.el;
-    const editor = em.get('Editor');
-    const container = em.get('Config').el;
-    const frameEl = em.get('Canvas').getBody();
+    const editor = em.Editor;
+    const frameEl = em.Canvas.getBody();
     const ppfx = this.ppfx;
     const updatedCls = `${ppfx}dropzone-active`;
     const dropzoneCls = `${ppfx}dropzone`;
@@ -392,7 +391,7 @@ export default class FileUploaderView extends View {
       promises.push(promise);
     }
 
-    Promise.all(promises).then(
+    return Promise.all(promises).then(
       data => {
         response.data = data;
         // @ts-ignore

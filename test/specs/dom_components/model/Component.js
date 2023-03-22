@@ -541,7 +541,7 @@ describe('Text Node Component', () => {
       attributes: { 'data-test': 'value' },
       content: 'test content &<>"\'',
     });
-    expect(obj.toHTML()).toEqual('test content &amp;&lt;&gt;&quot;&#039;');
+    expect(obj.toHTML()).toEqual('test content &amp;&lt;&gt;"\'');
   });
 });
 
@@ -591,7 +591,7 @@ describe('Map Component', () => {
   test('Component parse not map iframe', () => {
     var el = $('<iframe src="https://www.youtube.com/watch?v=jNQXAC9IVRw"></iframe>');
     obj = ComponentMap.isComponent(el.get(0));
-    expect(obj).toEqual('');
+    expect(obj).toEqual(undefined);
   });
 });
 

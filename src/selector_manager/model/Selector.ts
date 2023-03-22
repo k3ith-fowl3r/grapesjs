@@ -5,6 +5,15 @@ import EditorModel from '../../editor/model/Editor';
 const TYPE_CLASS = 1;
 const TYPE_ID = 2;
 
+export interface SelectorProps {
+  name: string;
+  label?: string;
+  type?: number;
+  active?: boolean;
+  private?: boolean;
+  protected?: boolean;
+}
+
 /**
  * @typedef Selector
  * @property {String} name Selector name, eg. `my-class`
@@ -12,7 +21,7 @@ const TYPE_ID = 2;
  * @property {Number} [type=1] Type of the selector. 1 (class) | 2 (id)
  * @property {Boolean} [active=true] If not active, it's not selectable by the Style Manager.
  * @property {Boolean} [private=false] If true, it can't be seen by the Style Manager, but it will be rendered in the canvas and in export code.
- * @property {Boolean} [protected=false] If true, it can't be removed from the attacched component.
+ * @property {Boolean} [protected=false] If true, it can't be removed from the attached component.
  */
 export default class Selector extends Model {
   defaults() {
@@ -50,9 +59,7 @@ export default class Selector extends Model {
 
     const namePreEsc = this.get('name');
     const { escapeName } = config;
-    const nameEsc = escapeName
-      ? escapeName(namePreEsc)
-      : Selector.escapeName(namePreEsc);
+    const nameEsc = escapeName ? escapeName(namePreEsc) : Selector.escapeName(namePreEsc);
     this.set('name', nameEsc);
     this.em = opts.em;
   }
@@ -172,7 +179,7 @@ export default class Selector extends Model {
    * @private
    */
   static escapeName(name: string) {
-    return `${name}`.trim().replace(/([^a-z0-9\w-\:]+)/gi, '-');
+    return `${name}`.trim().replace(/([^a-z0-9\w-\:@]+)/gi, '-');
   }
 }
 

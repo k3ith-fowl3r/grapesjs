@@ -40,12 +40,12 @@
  */
 
 import { isString, bindAll } from 'underscore';
-import { Model } from '../abstract';
+import { ModuleModel } from '../abstract';
 import Module from '../abstract/Module';
 import Component from '../dom_components/model/Component';
 import EditorModel from '../editor/model/Editor';
 import { hasWin, isComponent, isDef } from '../utils/mixins';
-import defaults from './config/config';
+import defaults, { LayerManagerConfig } from './config/config';
 import View from './view/ItemView';
 
 interface LayerData {
@@ -81,8 +81,8 @@ const isStyleHidden = (style: any = {}) => {
   return (style.display || '').trim().indexOf('none') === 0;
 };
 
-export default class LayerManager extends Module<typeof defaults> {
-  model!: Model;
+export default class LayerManager extends Module<LayerManagerConfig> {
+  model!: ModuleModel;
 
   view?: View;
 
@@ -91,7 +91,7 @@ export default class LayerManager extends Module<typeof defaults> {
   constructor(em: EditorModel) {
     super(em, 'LayerManager', defaults);
     bindAll(this, 'componentChanged', '__onRootChange', '__onComponent');
-    this.model = new Model(this, { opened: {} });
+    this.model = new ModuleModel(this, { opened: {} });
     // @ts-ignore
     this.config.stylePrefix = this.config.pStylePrefix;
     return this;
@@ -104,7 +104,7 @@ export default class LayerManager extends Module<typeof defaults> {
     model.listenTo(em, propsToListen, this.__onComponent);
     this.componentChanged();
     model.listenToOnce(em, 'load', () => {
-      this.setRoot(config.root);
+      this.setRoot(config.root!);
       this.__appendTo();
     });
   }
@@ -367,7 +367,7 @@ export default class LayerManager extends Module<typeof defaults> {
     const hideText = this.config.hideTextnode;
     const isValid = !hideText || (!cmp.is('textnode') && tag !== 'br');
 
-    return isValid && cmp.get('layerable');
+    return isValid && cmp.get('layerable')!;
   }
 
   __trgCustom(opts?: any) {

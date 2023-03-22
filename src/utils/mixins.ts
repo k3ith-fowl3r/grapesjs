@@ -1,4 +1,5 @@
 import { keys, isUndefined, isElement, isArray } from 'underscore';
+import EditorModel from '../editor/model/Editor';
 
 export const isDef = (value: any) => typeof value !== 'undefined';
 
@@ -13,8 +14,7 @@ const elProt = hasWin() ? window.Element.prototype : {};
 // @ts-ignore
 const matches = elProt.matches || elProt.webkitMatchesSelector || elProt.mozMatchesSelector || elProt.msMatchesSelector;
 
-// @ts-ignore
-export const getUiClass = (em, defCls) => {
+export const getUiClass = (em: EditorModel, defCls: string) => {
   const { stylePrefix, customUI } = em.getConfig();
   return [customUI && `${stylePrefix}cui`, defCls].filter(i => i).join(' ');
 };
@@ -138,8 +138,8 @@ const normalizeFloat = (value: any, step = 1, valueDef = 0) => {
   return stepDecimals ? parseFloat(value.toFixed(stepDecimals)) : value;
 };
 
-const hasDnd = (em: any) => {
-  return 'draggable' in document.createElement('i') && (em ? em.get('Config').nativeDnD : 1);
+const hasDnd = (em: EditorModel) => {
+  return 'draggable' in document.createElement('i') && (em ? em.config.nativeDnD! : true);
 };
 
 /**
@@ -192,6 +192,10 @@ export const escape = (str = '') => {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
     .replace(/`/g, '&#96;');
+};
+
+export const escapeNodeContent = (str = '') => {
+  return `${str}`.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 };
 
 export const deepMerge = (...args: Record<string, any>[]) => {
@@ -268,10 +272,10 @@ const getKeyCode = (ev: KeyboardEvent) => ev.which || ev.keyCode;
 const getKeyChar = (ev: KeyboardEvent) => String.fromCharCode(getKeyCode(ev));
 const isEscKey = (ev: KeyboardEvent) => getKeyCode(ev) === 27;
 const isEnterKey = (ev: KeyboardEvent) => getKeyCode(ev) === 13;
-const isObject = (val: any) => val !== null && !Array.isArray(val) && typeof val === 'object';
+const isObject = (val: any): val is Object => val !== null && !Array.isArray(val) && typeof val === 'object';
 const isEmptyObj = (val: Record<string, any>) => Object.keys(val).length <= 0;
 
-const capitalize = (str: string) => str && str.charAt(0).toUpperCase() + str.substring(1);
+const capitalize = (str: string = '') => str && str.charAt(0).toUpperCase() + str.substring(1);
 const isComponent = (obj: any) => obj && obj.toHTML;
 const isRule = (obj: any) => obj && obj.toCSS;
 

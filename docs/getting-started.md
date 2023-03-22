@@ -424,7 +424,7 @@ editor.Commands.add('show-styles', {
   <DemoStyle/>
 </Demo>
 
-Inside Style Manager definition we use `buildProps` which helps us create common properties from [available built-in objects](modules/Style-manager.html#built-in-properties) then in `properties` we can override same objects (eg. passing another `name` to change the label) identified by `property` name. As you can see from `custom-prop` example it's a matter of defining the CSS `property` and the input `type`. We suggest to check a more complete example of Style Manager properties usage from the [webpage preset demo](https://github.com/artf/grapesjs/blob/gh-pages/demo.html#L1000).
+Inside Style Manager definition we use `buildProps` which helps us create common properties from [available built-in objects](modules/Style-manager.html#built-in-properties) then in `properties` we can override same objects (eg. passing another `name` to change the label) identified by `property` name. As you can see from `custom-prop` example it's a matter of defining the CSS `property` and the input `type`. We suggest to check a more complete example of Style Manager properties usage from the [webpage preset demo](https://github.com/GrapesJS/grapesjs/blob/gh-pages/demo.html#L1000).
 
 ::: tip
 Check the [Style Manager API](api/panels.html) to see how to update sectors and properties dynamically.
@@ -438,7 +438,7 @@ Each component can also indicate what to style and what not.
 -->
 
 ## Traits
-Most of the time you would style your components and place them somewhere in the structure, but sometimes your components might need custom attributes or even custom behaviors and for this need you can make use of traits. Traits are commonly used to update HTML element attributes (eg. `placeholder` for inputs or `alt` for images), but you can also define your own custom traits. Access the selected Component model and do whatever you want. For this guide, we going to show you how to render available traits, for more details on how to extend them we suggest you read the [Trait Manager Module page](modules/Traits.html).
+Most of the time you would style your components and place them somewhere in the structure, but sometimes your components might need custom attributes or even custom behaviors and for this need you can make use of traits. Traits are commonly used to update HTML element attributes (eg. `placeholder` for inputs or `alt` for images), but you can also define your own custom traits. Access the selected Component model and do whatever you want. For this guide, we are going to show you how to render available traits, for more details on how to extend them we suggest you read the [Trait Manager Module page](modules/Traits.html).
 
 Let's create a new container for traits. Tell the editor where to render it and update the sidebar switcher:
 
@@ -602,7 +602,7 @@ Check out the [Device Manager API](api/device_manager.html) to see all the avail
 
 ## Store & load data
 Once you have finished with defining your builder interface the next step would be to setup the storing and loading process.
-GrapesJS implements 2 simple type of storages inside its Storage Manager: The local (by using `localStorage`, active by default) and the remote one. Those are enough to cover most of the cases, but it's also possible to add new implementations ([grapesjs-indexeddb](https://github.com/artf/grapesjs-indexeddb) is a good example).
+GrapesJS implements 2 simple type of storages inside its Storage Manager: The local (by using `localStorage`, active by default) and the remote one. Those are enough to cover most of the cases, but it's also possible to add new implementations ([grapesjs-indexeddb](https://github.com/GrapesJS/storage-indexeddb) is a good example).
 Let's see how the default options work:
 
 ```js
@@ -669,7 +669,7 @@ If you prefer you could also disable the autosaving and use a custom command to 
 To get a better overview of the Storage Manager and how you should store/load the template, or how to define new storages you should read the [Storage Manager Module](modules/Storage.html) page.
 
 ## Theming
-One last step that might actually improve a lot your editor personality is how it looks visually. To achieve an easy theming we have adapted an atomic design for this purpose. To customize the main palette of colors all you have to do is to change few CSS rules. Alternatively if you include GrapesJS styles via SCSS you can make use of its [internal variables](https://github.com/artf/grapesjs/blob/dev/src/styles/scss/_gjs_variables.scss) and declare your variables before the import:
+One last step that might actually improve a lot your editor personality is how it looks visually. To achieve an easy theming we have adapted an atomic design for this purpose. To customize the main palette of colors all you have to do is to change few CSS rules. Alternatively if you include GrapesJS styles via SCSS you can make use of its [internal variables](https://github.com/GrapesJS/grapesjs/blob/dev/src/styles/scss/_gjs_variables.scss) and declare your variables before the import:
 
 ```scss
 // Put your variables before the GrapesJS style import
