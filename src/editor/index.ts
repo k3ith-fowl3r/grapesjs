@@ -118,14 +118,14 @@ type EditorConfigType = EditorConfig & { pStylePrefix?: string };
 
 type EditorModelParam<T extends keyof EditorModel, N extends number> = Parameters<EditorModel[T]>[N];
 
+export type EditorParam<T extends keyof Editor, N extends number> = Parameters<Editor[T]>[N];
+
 export default class Editor implements IBaseModule<EditorConfig> {
   editorView?: EditorView;
   editor: EditorModel;
   $: any;
   em: EditorModel;
   config: EditorConfigType;
-
-  modules = [];
 
   constructor(config: EditorConfig = {}, opts: any = {}) {
     this.config = {
