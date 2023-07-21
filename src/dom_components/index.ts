@@ -38,6 +38,7 @@
  * * `component:drag:start` - Component drag started. Passed an object, to the callback, containing the `target` (component to drag), `parent` (parent of the component) and `index` (component index in the parent)
  * * `component:drag` - During component drag. Passed the same object as in `component:drag:start` event, but in this case, `parent` and `index` are updated by the current pointer
  * * `component:drag:end` - Component drag ended. Passed the same object as in `component:drag:start` event, but in this case, `parent` and `index` are updated by the final pointer
+ * * `component:resize` - During component resize.
  *
  * ## Methods
  * * [getWrapper](#getwrapper)
@@ -54,9 +55,9 @@
  */
 import { isEmpty, isObject, isArray, isFunction, isString, result, debounce } from 'underscore';
 import defaults, { DomComponentsConfig } from './config/config';
-import Component, { keyUpdate, keyUpdateInside } from './model/Component';
+import Component, { IComponent, keyUpdate, keyUpdateInside } from './model/Component';
 import Components from './model/Components';
-import ComponentView from './view/ComponentView';
+import ComponentView, { IComponentView } from './view/ComponentView';
 import ComponentWrapperView from './view/ComponentWrapperView';
 import ComponentsView from './view/ComponentsView';
 import ComponentTableCell from './model/ComponentTableCell';
@@ -97,7 +98,8 @@ import ComponentFrame from './model/ComponentFrame';
 import ComponentFrameView from './view/ComponentFrameView';
 import { ItemManagerModule } from '../abstract/Module';
 import EditorModel from '../editor/model/Editor';
-import { ComponentAdd } from './model/types';
+import { ComponentAdd, ComponentDefinition, ComponentDefinitionDefined } from './model/types';
+import { AddOptions } from '../common';
 
 export type ComponentEvent =
   | 'component:create'
@@ -115,7 +117,27 @@ export type ComponentEvent =
   | 'component:type:update'
   | 'component:drag:start'
   | 'component:drag'
-  | 'component:drag:end';
+  | 'component:drag:end'
+  | 'component:resize';
+
+export interface ComponentModelDefinition extends IComponent {
+  defaults?: ComponentDefinition | (() => ComponentDefinition);
+  [key: string]: any;
+}
+
+export interface ComponentViewDefinition extends IComponentView {
+  [key: string]: any;
+}
+
+export interface AddComponentTypeOptions {
+  isComponent?: (el: HTMLElement) => boolean | ComponentDefinitionDefined | undefined;
+  model?: Partial<ComponentModelDefinition> & ThisType<ComponentModelDefinition & Component>;
+  view?: Partial<ComponentViewDefinition> & ThisType<ComponentViewDefinition & ComponentView>;
+  extend?: string;
+  extendView?: string;
+  extendFn?: string[];
+  extendFnView?: string[];
+}
 
 export default class ComponentManager extends ItemManagerModule<DomComponentsConfig, any> {
   componentTypes = [
@@ -303,7 +325,7 @@ export default class ComponentManager extends ItemManagerModule<DomComponentsCon
   }
 
   /**
-   * Returns privately the main wrapper
+   * Returns the main wrapper.
    * @return {Object}
    * @private
    */
@@ -356,7 +378,7 @@ export default class ComponentManager extends ItemManagerModule<DomComponentsCon
    */
   getComponents(): Components {
     const wrp = this.getWrapper();
-    return wrp?.get('components')!;
+    return wrp?.components()!;
   }
 
   /**
@@ -388,7 +410,7 @@ export default class ComponentManager extends ItemManagerModule<DomComponentsCon
    *   attributes: { title: 'here' }
    * });
    */
-  addComponent(component: ComponentAdd, opt = {}) {
+  addComponent(component: ComponentAdd, opt: AddOptions = {}): Component | Component[] {
     return this.getComponents().add(component, opt);
   }
 
@@ -422,7 +444,7 @@ export default class ComponentManager extends ItemManagerModule<DomComponentsCon
    * @return {this}
    * @private
    */
-  setComponents(components: Component, opt = {}) {
+  setComponents(components: ComponentAdd, opt: AddOptions = {}) {
     this.clear(opt).addComponent(components, opt);
   }
 
@@ -433,12 +455,12 @@ export default class ComponentManager extends ItemManagerModule<DomComponentsCon
    * @param {Object} methods Component methods
    * @return {this}
    */
-  addType(type: string, methods: any) {
+  addType(type: string, methods: AddComponentTypeOptions) {
     const { em } = this;
     const { model = {}, view = {}, isComponent, extend, extendView, extendFn = [], extendFnView = [] } = methods;
     const compType = this.getType(type);
-    const extendType = this.getType(extend);
-    const extendViewType = this.getType(extendView);
+    const extendType = this.getType(extend!);
+    const extendViewType = this.getType(extendView!);
     const typeToExtend = extendType ? extendType : compType ? compType : this.getType('default');
     const modelToExt = typeToExtend.model;
     const viewToExt = extendViewType ? extendViewType.view : typeToExtend.view;
@@ -459,7 +481,7 @@ export default class ComponentManager extends ItemManagerModule<DomComponentsCon
 
     // If the model/view is a simple object I need to extend it
     if (typeof model === 'object') {
-      const defaults = result(model, 'defaults');
+      const modelDefaults = { defaults: model.defaults };
       delete model.defaults;
       methods.model = modelToExt.extend(
         {
@@ -470,11 +492,12 @@ export default class ComponentManager extends ItemManagerModule<DomComponentsCon
           isComponent: compType && !extendType && !isComponent ? modelToExt.isComponent : isComponent || (() => 0),
         }
       );
-      Object.defineProperty(methods.model.prototype, 'defaults', {
-        value: {
+      // Reassign the defaults getter to the model
+      Object.defineProperty(methods.model!.prototype, 'defaults', {
+        get: () => ({
           ...(result(modelToExt.prototype, 'defaults') || {}),
-          ...(defaults || {}),
-        },
+          ...(result(modelDefaults, 'defaults') || {}),
+        }),
       });
     }
 
@@ -489,8 +512,9 @@ export default class ComponentManager extends ItemManagerModule<DomComponentsCon
       compType.model = methods.model;
       compType.view = methods.view;
     } else {
+      // @ts-ignore
       methods.id = type;
-      this.componentTypes.unshift(methods);
+      this.componentTypes.unshift(methods as any);
     }
 
     const event = `component:type:${compType ? 'update' : 'add'}`;

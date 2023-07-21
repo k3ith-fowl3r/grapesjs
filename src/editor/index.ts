@@ -60,7 +60,7 @@ import BlockManager, { BlockEvent } from '../block_manager';
 import CanvasModule, { CanvasEvent } from '../canvas';
 import CodeManagerModule from '../code_manager';
 import CommandsModule, { CommandEvent } from '../commands';
-import { EventHandler } from '../common';
+import { AddOptions, EventHandler, LiteralUnion } from '../common';
 import CssComposer from '../css_composer';
 import CssRule from '../css_composer/model/CssRule';
 import CssRules from '../css_composer/model/CssRules';
@@ -69,6 +69,7 @@ import ComponentManager, { ComponentEvent } from '../dom_components';
 import Component from '../dom_components/model/Component';
 import Components from '../dom_components/model/Components';
 import ComponentWrapper from '../dom_components/model/ComponentWrapper';
+import { ComponentAdd, DragMode } from '../dom_components/model/types';
 import I18nModule from '../i18n';
 import KeymapsModule, { KeymapEvent } from '../keymaps';
 import ModalModule, { ModalEvent } from '../modal_dialog';
@@ -78,6 +79,7 @@ import PanelManager from '../panels';
 import ParserModule from '../parser';
 import { CustomParserCss } from '../parser/config/config';
 import RichTextEditorModule, { RichTextEditorEvent } from '../rich_text_editor';
+import { CustomRTE } from '../rich_text_editor/config/config';
 import SelectorManager, { SelectorEvent } from '../selector_manager';
 import StorageManager, { StorageEvent } from '../storage_manager';
 import { ProjectData } from '../storage_manager/model/IStorage';
@@ -97,7 +99,9 @@ export type ParsedRule = {
   params?: string;
 };
 
-type EditorEvent =
+type GeneralEvent = 'canvasScroll' | 'undo' | 'redo' | 'load' | 'update';
+
+type EditorBuiltInEvents =
   | ComponentEvent
   | BlockEvent
   | AssetEvent
@@ -109,10 +113,9 @@ type EditorEvent =
   | RichTextEditorEvent
   | ModalEvent
   | CommandEvent
-  | GeneralEvent
-  | string;
+  | GeneralEvent;
 
-type GeneralEvent = 'canvasScroll' | 'undo' | 'redo' | 'load' | 'update';
+type EditorEvent = LiteralUnion<EditorBuiltInEvents, string>;
 
 type EditorConfigType = EditorConfig & { pStylePrefix?: string };
 
@@ -319,7 +322,7 @@ export default class Editor implements IBaseModule<EditorConfig> {
    *   content: 'New component'
    * });
    */
-  setComponents(components: any, opt: any = {}) {
+  setComponents(components: ComponentAdd, opt: AddOptions = {}) {
     this.em.setComponents(components, opt);
     return this;
   }
@@ -341,7 +344,7 @@ export default class Editor implements IBaseModule<EditorConfig> {
    *   content: 'New component'
    * });
    */
-  addComponents(components: any, opts?: any): Component[] {
+  addComponents(components: ComponentAdd, opts?: AddOptions): Component[] {
     return this.getWrapper()!.append(components, opts);
   }
 
@@ -648,7 +651,7 @@ export default class Editor implements IBaseModule<EditorConfig> {
    *  }
    * });
    */
-  setCustomRte(obj: any) {
+  setCustomRte<T>(obj: CustomRTE & ThisType<T & CustomRTE>) {
     this.RichTextEditor.customRte = obj;
   }
 
@@ -682,7 +685,7 @@ export default class Editor implements IBaseModule<EditorConfig> {
    * @param {String} value Drag mode, options: 'absolute' | 'translate'
    * @returns {this}
    */
-  setDragMode(value: string) {
+  setDragMode(value: DragMode) {
     this.em.setDragMode(value);
     return this;
   }

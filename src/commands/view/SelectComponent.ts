@@ -443,7 +443,6 @@ export default {
           const onlyHeight = ['tc', 'bc'].indexOf(selectedHandler) >= 0;
           const onlyWidth = ['cl', 'cr'].indexOf(selectedHandler) >= 0;
           const style: any = {};
-          const en = !store ? 1 : ''; // this will trigger the final change
 
           if (!onlyHeight) {
             const bodyw = canvas.getBody().offsetWidth;
@@ -455,10 +454,18 @@ export default {
             style[keyHeight] = autoHeight ? 'auto' : `${rect.h}${unitHeight}`;
           }
 
-          modelToStyle.addStyle({ ...style, en }, { avoidStore: !store });
-          const updateEvent = 'update:component:style';
-          const eventToListen = `${updateEvent}:${keyHeight} ${updateEvent}:${keyWidth}`;
-          em && em.trigger(eventToListen, null, null, { noEmit: 1 });
+          if (em.getDragMode(model)) {
+            style.top = `${rect.t}${unitHeight}`;
+            style.left = `${rect.l}${unitWidth}`;
+          }
+
+          const finalStyle = {
+            ...style,
+            // value for the partial update
+            __p: !store,
+          };
+          modelToStyle.addStyle(finalStyle, { avoidStore: !store });
+          em.Styles.__emitCmpStyleUpdate(finalStyle, { components: em.getSelected() });
         },
       };
 
@@ -640,7 +647,7 @@ export default {
     const unit = 'px';
     const toolsEl = this.toggleToolsEl(1);
     const { style } = toolsEl;
-    const targetToElem = canvas.getTargetToElementFixed(el, canvas.getToolbarEl(), { pos });
+    const targetToElem = canvas.getTargetToElementFixed(el, canvas.getToolbarEl()!, { pos });
     const topOff = targetToElem.canvasOffsetTop;
     const leftOff = targetToElem.canvasOffsetLeft;
     style.top = topOff + unit;
@@ -679,7 +686,7 @@ export default {
    * @private
    */
   getElementPos(el: HTMLElement) {
-    return this.canvas.getCanvasView().getElementPos(el);
+    return this.canvas.getCanvasView().getElementPos(el, { noScroll: true });
   },
 
   /**
