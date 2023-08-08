@@ -12,7 +12,7 @@ import {
   keys,
 } from 'underscore';
 import { shallowDiff, capitalize, isEmptyObj, isObject, toLowerCase } from '../../utils/mixins';
-import StyleableModel from '../../domain_abstract/model/StyleableModel';
+import StyleableModel, { StyleProps } from '../../domain_abstract/model/StyleableModel';
 import { Model } from 'backbone';
 import Components from './Components';
 import Selector from '../../selector_manager/model/Selector';
@@ -593,7 +593,7 @@ export default class Component extends StyleableModel<ComponentProperties> {
    * @example
    * component.setStyle({ color: 'red' });
    */
-  setStyle(prop: ObjectStrings = {}, opts: any = {}) {
+  setStyle(prop: StyleProps = {}, opts: any = {}) {
     const { opt, em } = this;
 
     if (avoidInline(em) && !opt.temporary && !opts.inline) {
@@ -608,8 +608,7 @@ export default class Component extends StyleableModel<ComponentProperties> {
       this.set('style', '', { silent: true });
       keys(diff).forEach(pr => this.trigger(`change:style:${pr}`));
     } else {
-      // @ts-ignore
-      prop = super.setStyle.apply(this, arguments);
+      prop = super.setStyle.apply(this, arguments as any);
     }
 
     return prop;
