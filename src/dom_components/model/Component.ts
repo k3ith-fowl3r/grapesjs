@@ -174,6 +174,14 @@ export default class Component extends StyleableModel<ComponentProperties> {
     return this.get('content') ?? '';
   }
 
+  get toolbar() {
+    return this.get('toolbar') || [];
+  }
+
+  get resizable() {
+    return this.get('resizable')!;
+  }
+
   /**
    * Hook method, called once the model is created
    */
@@ -981,9 +989,9 @@ export default class Component extends StyleableModel<ComponentProperties> {
 
   initClasses(m?: any, c?: any, opts: any = {}) {
     const event = 'change:classes';
-    const attrCls = this.get('attributes')!.class || [];
+    const { class: attrCls, ...restAttr } = this.get('attributes') || {};
     const toListen = [this, event, this.initClasses];
-    const cls = this.get('classes') || attrCls;
+    const cls = this.get('classes') || attrCls || [];
     const clsArr = isString(cls) ? cls.split(' ') : cls;
     this.stopListening(...toListen);
     const classes = this.normalizeClasses(clsArr);
@@ -991,6 +999,8 @@ export default class Component extends StyleableModel<ComponentProperties> {
     this.set('classes', selectors, opts);
     selectors.add(classes);
     selectors.on('add remove reset', this.__upSymbCls);
+    // Clear attributes from classes
+    attrCls && classes.length && this.set('attributes', restAttr);
     // @ts-ignore
     this.listenTo(...toListen);
     return this;
@@ -1701,7 +1711,7 @@ export default class Component extends StyleableModel<ComponentProperties> {
    * @param {Frame} frame Specific frame from which taking the element
    * @return {HTMLElement}
    */
-  getEl(frame = undefined) {
+  getEl(frame?: Frame) {
     const view = this.getView(frame);
     return view && view.el;
   }
@@ -1713,17 +1723,19 @@ export default class Component extends StyleableModel<ComponentProperties> {
    * @return {ComponentView}
    */
   getView(frame?: Frame) {
-    let { view, views } = this;
+    let { view, views, em } = this;
+    const frm = frame || em?.getCurrentFrameModel();
 
-    if (frame) {
-      view = views.filter(view => view._getFrame() === frame.view)[0];
+    if (frm) {
+      view = views.filter(view => view.frameView === frm.view)[0];
     }
 
     return view;
   }
 
   getCurrentView() {
-    const frame = (this.em.get('currentFrame') || {}).model;
+    const frameView = this.em.getCurrentFrame();
+    const frame = frameView?.model;
     return this.getView(frame);
   }
 
@@ -1755,16 +1767,16 @@ export default class Component extends StyleableModel<ComponentProperties> {
     } else {
       // Deprecated
       // Need to convert script functions to strings
-      if (typeof scr == 'function') {
-        var scrStr = scr.toString().trim();
-        scrStr = scrStr.replace(/^function[\s\w]*\(\)\s?\{/, '').replace(/\}$/, '');
+      if (isFunction(scr)) {
+        let scrStr = scr.toString().trim();
+        scrStr = scrStr.slice(scrStr.indexOf('{') + 1, scrStr.lastIndexOf('}'));
         scr = scrStr.trim();
       }
 
-      var config = this.em.getConfig();
-      var tagVarStart = escapeRegExp(config.tagVarStart || '{[ ');
-      var tagVarEnd = escapeRegExp(config.tagVarEnd || ' ]}');
-      var reg = new RegExp(`${tagVarStart}([\\w\\d-]*)${tagVarEnd}`, 'g');
+      const config = this.em.getConfig();
+      const tagVarStart = escapeRegExp(config.tagVarStart || '{[ ');
+      const tagVarEnd = escapeRegExp(config.tagVarEnd || ' ]}');
+      const reg = new RegExp(`${tagVarStart}([\\w\\d-]*)${tagVarEnd}`, 'g');
       scr = scr.replace(reg, (match, v) => {
         // If at least one match is found I have to track this change for a
         // better optimization inside JS generator
