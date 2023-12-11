@@ -669,23 +669,8 @@ If you prefer you could also disable the autosaving and use a custom command to 
 To get a better overview of the Storage Manager and how you should store/load the template, or how to define new storages you should read the [Storage Manager Module](modules/Storage.html) page.
 
 ## Theming
-One last step that might actually improve a lot your editor personality is how it looks visually. To achieve an easy theming we have adapted an atomic design for this purpose. To customize the main palette of colors all you have to do is to change a few CSS rules. Alternatively if you include GrapesJS styles via SCSS you can make use of its [internal variables](https://github.com/GrapesJS/grapesjs/blob/dev/src/styles/scss/_gjs_variables.scss) and declare your variables before the import:
+One last step that might actually improve a lot your editor personality is how it looks visually. To achieve an easy theming we have adapted an atomic design for this purpose. So for example to customize the main palette of colors all you have to do is to place your custom CSS rules after the GrapesJS styles.
 
-```scss
-// Put your variables before the GrapesJS style import
-
-// Palette variables
-$primaryColor: #444;
-$secondaryColor: #ddd;
-$tertiaryColor: #804f7b;
-$quaternaryColor: #d278c9;
-
-// ...
-
-@import "grapesjs/src/styles/scss/main.scss";
-```
-
-In the case of a simple CSS you'll have to put your rules after the GrapesJS styles.
 To complete our builder let's customize its color palette and to make it more visually "readable" we can replace all button labels with SVG icons:
 
 ```css
@@ -717,6 +702,19 @@ To complete our builder let's customize its color palette and to make it more vi
   color: #ec5896;
 }
 ```
+
+There is also a bunch of [CSS custom properties (variables)](https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_custom_properties) that you can use to customize the styles of the editor.
+
+For example, you could achieve the same result as above by doing this:
+```css
+:root {
+  --gjs-primary-color: #78366a;
+  --gjs-secondary-color: rgba(255, 255, 255, 0.7);
+  --gjs-tertiary-color: #ec5896;
+  --gjs-quaternary-color: #ec5896;
+}
+```
+
 
 And here is our final result:
 
