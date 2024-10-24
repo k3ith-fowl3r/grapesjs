@@ -3,9 +3,10 @@ import CanvasModule from '../canvas';
 import { ObjectStrings } from '../common';
 import EditorModel from '../editor/model/Editor';
 import { getDocumentScroll, off, on } from './dom';
-import { DragDirection } from './sorter/types';
+import { DragDirection, DragSource } from './sorter/types';
 import CanvasNewComponentNode from './sorter/CanvasNewComponentNode';
 import ComponentSorter from './sorter/ComponentSorter';
+import Component from '../dom_components/model/Component';
 
 // TODO move in sorter
 type SorterOptions = {
@@ -28,6 +29,7 @@ export default class Droppable {
   dragStop?: DragStop;
   draggedNode?: CanvasNewComponentNode;
   sorter!: ComponentSorter<CanvasNewComponentNode>;
+  setAbsoluteDragContent?: (cnt: any) => any;
 
   constructor(em: EditorModel, rootEl?: HTMLElement) {
     this.em = em;
@@ -107,9 +109,9 @@ export default class Droppable {
   handleDragEnter(ev: DragEvent | Event) {
     const { em, canvas } = this;
     const dt = (ev as DragEvent).dataTransfer;
-    const dragContentOrigin = em.get('dragContent');
+    const dragSourceOrigin: DragSource<Component> = em.get('dragSource');
 
-    if (!dragContentOrigin && !canvas.getConfig().allowExternalDrop) {
+    if (!dragSourceOrigin?.content && !canvas.getConfig().allowExternalDrop) {
       return;
     }
 
@@ -118,11 +120,10 @@ export default class Droppable {
     this.over = true;
     const utils = em.Utils;
     // For security reason I can't read the drag data on dragenter, but
-    // as I need it for the Sorter context I will use `dragContent` or just
+    // as I need it for the Sorter context I will use `dragSource` or just
     // any not empty element
-    let content = dragContentOrigin || '<br>';
+    let content = dragSourceOrigin?.content || '<br>';
     let dragStop: DragStop;
-    let dragContent;
     em.stopDefault();
 
     // Select the right drag provider
@@ -136,7 +137,7 @@ export default class Droppable {
         target,
         onEnd: (ev: any, dragger: any, { cancelled }: any) => {
           let comp;
-          if (!cancelled) {
+          if (!cancelled && !!content) {
             comp = wrapper.append(content)[0];
             const canvasOffset = canvas.getOffset();
             const { top, left, position } = target.getStyle() as ObjectStrings;
@@ -155,7 +156,7 @@ export default class Droppable {
         },
       });
       dragStop = (cancel?: boolean) => dragger.stop(ev, { cancel });
-      dragContent = (cnt: any) => (content = cnt);
+      this.setAbsoluteDragContent = (cnt: any) => (content = cnt);
     } else {
       const sorter = new utils.ComponentSorter({
         em,
@@ -186,16 +187,10 @@ export default class Droppable {
         sorter.eventHandlers.legacyOnEnd = sorterOptions.legacyOnEnd;
         sorter.containerContext.customTarget = sorterOptions.customTarget;
       }
-      this.em.on(
-        'frame:scroll',
-        ((...agrs: any[]) => {
-          const canvasScroll = this.canvas.getCanvasView().frame === agrs[0].frame;
-          if (canvasScroll) sorter.recalculateTargetOnScroll();
-        }).bind(this),
-      );
       let dropModel = this.getTempDropModel(content);
       const el = dropModel.view?.el;
-      sorter.startSort(el ? [{ element: el, content }] : []);
+      const sources = el ? [{ element: el, dragSource: dragSourceOrigin }] : [];
+      sorter.startSort(sources);
       this.sorter = sorter;
       this.draggedNode = sorter.sourceNodes?.[0];
       dragStop = (cancel?: boolean) => {
@@ -260,6 +255,7 @@ export default class Droppable {
     if (this.draggedNode) {
       this.draggedNode.content = content;
     }
+    this.setAbsoluteDragContent?.(content);
     this.endDrop(!content, ev);
   }
 
@@ -267,7 +263,7 @@ export default class Droppable {
     const em = this.em;
     const types = dt && dt.types;
     const files = (dt && dt.files) || [];
-    const dragContent = em.get('dragContent');
+    const dragSource: DragSource<Component> = em.get('dragSource');
     let content = dt && dt.getData('text');
 
     if (files.length) {
@@ -284,8 +280,8 @@ export default class Droppable {
           });
         }
       }
-    } else if (dragContent) {
-      content = dragContent;
+    } else if (dragSource?.content) {
+      content = dragSource.content;
     } else if (indexOf(types, 'text/html') >= 0) {
       content = dt && dt.getData('text/html').replace(/<\/?meta[^>]*>/g, '');
     } else if (indexOf(types, 'text/uri-list') >= 0) {

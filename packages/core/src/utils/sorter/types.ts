@@ -1,19 +1,36 @@
-import CanvasModule from '../../canvas';
+import { ComponentDefinition } from '../../dom_components/model/types';
 import EditorModel from '../../editor/model/Editor';
+import Dimension from './Dimension';
 import { SortableTreeNode } from './SortableTreeNode';
 
-export interface Dimension {
-  top: number;
-  left: number;
-  height: number;
-  width: number;
-  offsets: ReturnType<CanvasModule['getElementOffsets']>;
-  dir?: boolean;
-  el?: HTMLElement;
-  indexEl?: number;
+export type ContentElement = string | ComponentDefinition;
+export type ContentType = ContentElement | ContentElement[];
+
+export interface DraggableContent {
+  /**
+   * Determines if a block can be moved inside a given component when the content is a function.
+   *
+   * This property is used to determine the validity of the drag operation.
+   * @type {ComponentDefinition | undefined}
+   */
+  dragDef?: ComponentDefinition;
+  /**
+   * The content being dragged. Might be an HTML string or a [Component Defintion](/modules/Components.html#component-definition)
+   */
+  content?: ContentType | (() => ContentType);
 }
 
+export type DragSource<T> = DraggableContent & {
+  model?: T;
+};
+
 export type Placement = 'inside' | 'before' | 'after';
+
+export type DroppableZoneConfig = {
+  ratio: number;
+  minUndroppableDimension: number; // In px
+  maxUndroppableDimension: number; // In px
+};
 
 export enum DragDirection {
   Vertical = 'Vertical',
@@ -96,7 +113,7 @@ export interface SorterDragBehaviorOptions {
 
 export interface SorterOptions<T, NodeType extends SortableTreeNode<T>> {
   em: EditorModel;
-  treeClass: new (model: T, content?: any) => NodeType;
+  treeClass: new (model: T, dragSource?: DragSource<T>) => NodeType;
 
   containerContext: SorterContainerContext;
   positionOptions: PositionOptions;

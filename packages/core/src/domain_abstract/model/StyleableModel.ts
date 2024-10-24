@@ -1,12 +1,15 @@
 import { isArray, isString, keys } from 'underscore';
-import { Model, ObjectAny, ObjectHash, SetOptions } from '../../common';
+import { Model, ObjectAny, ObjectHash, SetOptions, View } from '../../common';
 import ParserHtml from '../../parser/model/ParserHtml';
 import Selectors from '../../selector_manager/model/Selectors';
 import { shallowDiff } from '../../utils/mixins';
 import EditorModel from '../../editor/model/Editor';
 import StyleDataVariable from '../../data_sources/model/StyleDataVariable';
 import { DataVariableType } from '../../data_sources/model/DataVariable';
-import DataVariableListenerManager from '../../data_sources/model/DataVariableListenerManager';
+import DynamicVariableListenerManager from '../../data_sources/model/DataVariableListenerManager';
+import CssRuleView from '../../css_composer/view/CssRuleView';
+import ComponentView from '../../dom_components/view/ComponentView';
+import Frame from '../../canvas/model/Frame';
 
 export type StyleProps = Record<
   string,
@@ -26,6 +29,8 @@ export type UpdateStyleOptions = SetOptions & {
   noEvent?: boolean;
 };
 
+export type StyleableView = ComponentView | CssRuleView;
+
 const parserHtml = ParserHtml();
 
 export const getLastStyleValue = (value: string | string[]) => {
@@ -34,7 +39,13 @@ export const getLastStyleValue = (value: string | string[]) => {
 
 export default class StyleableModel<T extends ObjectHash = any> extends Model<T> {
   em?: EditorModel;
-  dataVariableListeners: Record<string, DataVariableListenerManager> = {};
+  dynamicVariableListeners: Record<string, DynamicVariableListenerManager> = {};
+  views: StyleableView[] = [];
+
+  constructor(attributes: T, options: { em?: EditorModel } = {}) {
+    super(attributes, options);
+    this.em = options.em;
+  }
 
   /**
    * Parse style string to an object
@@ -51,21 +62,23 @@ export default class StyleableModel<T extends ObjectHash = any> extends Model<T>
    * @return {Object}
    */
   extendStyle(prop: ObjectAny): ObjectAny {
-    return { ...this.getStyle(), ...prop };
+    return { ...this.getStyle('', { skipResolve: true }), ...prop };
   }
 
   /**
    * Get style object
    * @return {Object}
    */
-  getStyle(prop?: string | ObjectAny): StyleProps {
+  getStyle(prop?: string | ObjectAny, opts: { skipResolve?: boolean } = {}): StyleProps {
     const style = this.get('style') || {};
     const result: ObjectAny = { ...style };
-    if (this.em) {
+
+    if (this.em && !opts.skipResolve) {
       const resolvedStyle = this.resolveDataVariables({ ...result });
       // @ts-ignore
       return prop && isString(prop) ? resolvedStyle[prop] : resolvedStyle;
     }
+
     return prop && isString(prop) ? result[prop] : result;
   }
 
@@ -101,9 +114,17 @@ export default class StyleableModel<T extends ObjectHash = any> extends Model<T>
 
       const styleValue = newStyle[key];
       if (typeof styleValue === 'object' && styleValue.type === DataVariableType) {
-        const styleDataVariable = new StyleDataVariable(styleValue, { em: this.em });
-        newStyle[key] = styleDataVariable;
-        this.manageDataVariableListener(styleDataVariable, key);
+        const dynamicType = styleValue.type;
+        let styleDynamicVariable;
+        switch (dynamicType) {
+          case DataVariableType:
+            styleDynamicVariable = new StyleDataVariable(styleValue, { em: this.em });
+            break;
+          default:
+            throw new Error(`Invalid data variable type. Expected '${DataVariableType}', but found '${dynamicType}'.`);
+        }
+        newStyle[key] = styleDynamicVariable;
+        this.manageDataVariableListener(styleDynamicVariable, key);
       }
     });
 
@@ -133,26 +154,36 @@ export default class StyleableModel<T extends ObjectHash = any> extends Model<T>
    * Manage DataVariableListenerManager for a style property
    */
   manageDataVariableListener(dataVar: StyleDataVariable, styleProp: string) {
-    if (this.dataVariableListeners[styleProp]) {
-      this.dataVariableListeners[styleProp].listenToDataVariable();
+    if (this.dynamicVariableListeners[styleProp]) {
+      this.dynamicVariableListeners[styleProp].listenToDynamicVariable();
     } else {
-      this.dataVariableListeners[styleProp] = new DataVariableListenerManager({
+      this.dynamicVariableListeners[styleProp] = new DynamicVariableListenerManager({
         model: this,
         em: this.em!,
         dataVariable: dataVar,
-        updateValueFromDataVariable: (newValue: string) => this.updateStyleProp(styleProp, newValue),
+        updateValueFromDataVariable: () => this.updateView(),
       });
     }
   }
 
-  /**
-   * Update a specific style property
-   */
-  updateStyleProp(prop: string, value: string) {
-    const style = this.getStyle();
-    style[prop] = value;
-    this.setStyle(style, { noEvent: true });
-    this.trigger(`change:style:${prop}`);
+  getView(frame?: Frame) {
+    let { views, em } = this;
+    const frm = frame || em?.getCurrentFrameModel();
+    return frm ? views.find((v) => v.frameView === frm.view) : views[0];
+  }
+
+  setView(view: StyleableView) {
+    let { views } = this;
+    !views.includes(view) && views.push(view);
+  }
+
+  removeView(view: StyleableView) {
+    const { views } = this;
+    views.splice(views.indexOf(view), 1);
+  }
+
+  updateView() {
+    this.views.forEach((view) => view.updateStyles());
   }
 
   /**

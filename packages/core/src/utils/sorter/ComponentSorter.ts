@@ -1,10 +1,17 @@
+import { bindAll } from 'underscore';
 import { CanvasSpotBuiltInTypes } from '../../canvas/model/CanvasSpot';
 import Component from '../../dom_components/model/Component';
 import EditorModel from '../../editor/model/Editor';
 import { getPointerEvent } from '../dom';
 import { BaseComponentNode } from './BaseComponentNode';
 import Sorter from './Sorter';
-import { SorterContainerContext, PositionOptions, SorterDragBehaviorOptions, SorterEventHandlers } from './types';
+import {
+  SorterContainerContext,
+  PositionOptions,
+  SorterDragBehaviorOptions,
+  SorterEventHandlers,
+  DragSource,
+} from './types';
 
 const targetSpotType = CanvasSpotBuiltInTypes.Target;
 
@@ -24,7 +31,7 @@ export default class ComponentSorter<NodeType extends BaseComponentNode> extends
     eventHandlers = {},
   }: {
     em: EditorModel;
-    treeClass: new (model: Component, content?: any) => NodeType;
+    treeClass: new (model: Component, dragSource?: DragSource<Component>) => NodeType;
     containerContext: SorterContainerContext;
     dragBehavior: SorterDragBehaviorOptions;
     positionOptions?: PositionOptions;
@@ -56,11 +63,29 @@ export default class ComponentSorter<NodeType extends BaseComponentNode> extends
         },
       },
     });
+
+    bindAll(this, 'handleScrollEvent');
   }
 
   private onStartSort() {
     this.em.clearSelection();
     this.setAutoCanvasScroll(true);
+  }
+
+  protected bindDragEventHandlers() {
+    this.em.on('frame:scroll', this.handleScrollEvent);
+    super.bindDragEventHandlers();
+  }
+
+  protected cleanupEventListeners(): void {
+    this.em.off('frame:scroll', this.handleScrollEvent);
+    super.cleanupEventListeners();
+  }
+
+  handleScrollEvent(...agrs: any[]) {
+    const frame = agrs?.[0]?.frame;
+    const canvasScroll = this.em.Canvas.getCanvasView().frame === frame;
+    if (canvasScroll) this.recalculateTargetOnScroll();
   }
 
   private onMouseMove = (mouseEvent: MouseEvent) => {
@@ -104,8 +129,9 @@ export default class ComponentSorter<NodeType extends BaseComponentNode> extends
     return sourceNodes.reduce((addedNodes, sourceNode) => {
       if (!targetNode.canMove(sourceNode, index)) return addedNodes;
       if (this.isPositionChanged(targetNode, sourceNode, index)) {
-        const addedNode = this.moveNode(targetNode, sourceNode, index);
+        const { index: lastIndex, addedNode } = this.moveNode(targetNode, sourceNode, index);
         addedNodes.push(addedNode);
+        index = lastIndex;
       }
       index++; // Increment the index
       return addedNodes;
@@ -140,9 +166,9 @@ export default class ComponentSorter<NodeType extends BaseComponentNode> extends
    * @param targetNode - The node where the source node will be moved.
    * @param sourceNode - The node being moved.
    * @param index - The index at which to move the source node.
-   * @returns The node that was moved and added, or null if it couldn't be moved.
+   * @returns An object containing the added node and its new index, or null if it couldn't be moved.
    */
-  private moveNode(targetNode: NodeType, sourceNode: NodeType, index: number): NodeType {
+  private moveNode(targetNode: NodeType, sourceNode: NodeType, index: number) {
     const parent = sourceNode.getParent();
     if (parent) {
       const initialSourceIndex = parent.indexOfChild(sourceNode);
@@ -155,7 +181,7 @@ export default class ComponentSorter<NodeType extends BaseComponentNode> extends
     const addedNode = targetNode.addChildAt(sourceNode, index, { action: 'move-component' }) as NodeType;
     this.triggerEndMoveEvent(addedNode);
 
-    return addedNode;
+    return { addedNode, index };
   }
 
   /**
@@ -187,8 +213,10 @@ export default class ComponentSorter<NodeType extends BaseComponentNode> extends
 
   private onTargetChange = (oldTargetNode: NodeType | undefined, newTargetNode: NodeType | undefined) => {
     oldTargetNode?.restNodeState();
+    const { Canvas } = this.em;
     if (!newTargetNode) {
       this.placeholder.hide();
+      Canvas.removeSpots(spotTarget);
       return;
     }
     newTargetNode?.setSelectedParentState();
@@ -201,7 +229,6 @@ export default class ComponentSorter<NodeType extends BaseComponentNode> extends
       this.placeholder.show();
     }
 
-    const { Canvas } = this.em;
     const { Select, Hover, Spacing } = CanvasSpotBuiltInTypes;
     [Select, Hover, Spacing].forEach((type) => Canvas.removeSpots({ type }));
     Canvas.addSpot({ ...spotTarget, component: newTargetNode.model });

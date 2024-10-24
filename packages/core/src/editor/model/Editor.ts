@@ -44,6 +44,7 @@ import ComponentWrapper from '../../dom_components/model/ComponentWrapper';
 import { CanvasSpotBuiltInTypes } from '../../canvas/model/CanvasSpot';
 import DataSourceManager from '../../data_sources';
 import { ComponentsEvents } from '../../dom_components/types';
+import { InitEditorConfig } from '../..';
 
 Backbone.$ = $;
 
@@ -113,7 +114,7 @@ export default class EditorModel extends Model {
   __skip = false;
   defaultRunning = false;
   destroyed = false;
-  _config: EditorConfig;
+  _config: InitEditorConfig;
   _storageTimeout?: ReturnType<typeof setTimeout>;
   attrsOrig: any;
   timedInterval?: ReturnType<typeof setTimeout>;
@@ -307,6 +308,10 @@ export default class EditorModel extends Model {
     return this._config;
   }
 
+  get version() {
+    return this.config.grapesjs?.version || '';
+  }
+
   /**
    * Get configurations
    * @param  {string} [prop] Property name
@@ -365,6 +370,7 @@ export default class EditorModel extends Model {
       storageManager: false,
       undoManager: false,
     });
+    shallow.set({ isShallow: true });
     // We only need to load a few modules
     shallow.Pages.onLoad();
     shallow.Canvas.postLoad();
@@ -439,7 +445,7 @@ export default class EditorModel extends Model {
    * */
   handleUpdates(model: any, val: any, opt: any = {}) {
     // Component has been added temporarily - do not update storage or record changes
-    if (this.__skip || opt.temporary || opt.noCount || opt.avoidStore || !this.get('ready')) {
+    if (this.__skip || opt.temporary || opt.noCount || opt.avoidStore || opt.partial || !this.get('ready')) {
       return;
     }
 

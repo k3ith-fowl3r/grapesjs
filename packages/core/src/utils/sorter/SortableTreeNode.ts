@@ -1,4 +1,7 @@
-import { $, View } from '../../common';
+import { View } from '../../common';
+import Dimension from './Dimension';
+import { DroppableZoneConfig } from './types';
+import { DragSource } from './types';
 
 /**
  * Base class for managing tree-like structures with sortable nodes.
@@ -7,10 +10,19 @@ import { $, View } from '../../common';
  */
 export abstract class SortableTreeNode<T> {
   protected _model: T;
-  protected _content: any;
-  constructor(model: T, content?: any) {
+  protected _dragSource: DragSource<T>;
+  protected _dropAreaConfig: DroppableZoneConfig = {
+    ratio: 1,
+    minUndroppableDimension: 0, // In px
+    maxUndroppableDimension: 0, // In px
+  };
+  /** The dimensions of the node. */
+  public nodeDimensions?: Dimension;
+  /** The dimensions of the child elements within the target node. */
+  public childrenDimensions?: Dimension[];
+  constructor(model: T, dragSource: DragSource<T> = {}) {
     this._model = model;
-    this._content = content;
+    this._dragSource = dragSource;
   }
   /**
    * Get the list of children of this node.
@@ -82,11 +94,35 @@ export abstract class SortableTreeNode<T> {
     return this._model;
   }
 
-  get content(): T {
-    return this._content;
+  get dragSource() {
+    return this._dragSource;
   }
 
-  equals(node?: SortableTreeNode<T>): boolean {
+  get dropArea(): Dimension | undefined {
+    // If no parent, there's no reason to reduce the drop zone
+    if (!this.getParent()) return this.nodeDimensions?.clone();
+    return this.nodeDimensions?.getDropArea(this._dropAreaConfig);
+  }
+
+  /**
+   * Checks if the given coordinates are within the bounds of this node.
+   *
+   * @param {number} x - The X coordinate to check.
+   * @param {number} y - The Y coordinate to check.
+   * @returns {boolean} - True if the coordinates are within bounds, otherwise false.
+   */
+  public isWithinDropBounds(x: number, y: number): boolean {
+    return !!this.dropArea && this.dropArea.isWithinBounds(x, y);
+  }
+
+  equals(node?: SortableTreeNode<T>): node is SortableTreeNode<T> {
     return !!node?._model && this._model === node._model;
+  }
+
+  adjustDimensions(diff: { topDifference: number; leftDifference: number }) {
+    if (diff.topDifference === 0 && diff.leftDifference === 0) return;
+
+    this.nodeDimensions?.adjustDimensions(diff);
+    this.childrenDimensions?.forEach((dims) => dims.adjustDimensions(diff));
   }
 }
