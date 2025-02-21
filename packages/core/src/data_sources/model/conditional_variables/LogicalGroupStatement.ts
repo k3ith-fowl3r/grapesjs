@@ -1,15 +1,23 @@
+import EditorModel from '../../../editor/model/Editor';
+import { Condition, ConditionProps } from './Condition';
 import { LogicalOperator } from './operators/LogicalOperator';
-import { Expression, LogicGroup } from './DataCondition';
-import { evaluateCondition } from './evaluateCondition';
 
 export class LogicalGroupStatement {
+  private em: EditorModel;
+
   constructor(
     private operator: LogicalOperator,
-    private statements: (Expression | LogicGroup | boolean)[],
-  ) {}
+    private statements: ConditionProps[],
+    opts: { em: EditorModel },
+  ) {
+    this.em = opts.em;
+  }
 
   evaluate(): boolean {
-    const results = this.statements.map((statement) => evaluateCondition(statement));
+    const results = this.statements.map((statement) => {
+      const condition = new Condition(statement, { em: this.em });
+      return condition.evaluate();
+    });
     return this.operator.evaluate(results);
   }
 }
