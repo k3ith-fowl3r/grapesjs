@@ -12,7 +12,11 @@ import {
   keys,
 } from 'underscore';
 import { shallowDiff, capitalize, isEmptyObj, isObject, toLowerCase } from '../../utils/mixins';
-import StyleableModel, { StyleProps, UpdateStyleOptions } from '../../domain_abstract/model/StyleableModel';
+import StyleableModel, {
+  GetStyleOpts,
+  StyleProps,
+  UpdateStyleOptions,
+} from '../../domain_abstract/model/StyleableModel';
 import { Model, ModelDestroyOptions } from 'backbone';
 import Components from './Components';
 import Selector from '../../selector_manager/model/Selector';
@@ -50,14 +54,15 @@ import {
   updateSymbolCls,
   updateSymbolComps,
   updateSymbolProps,
+  getSymbolsToUpdate,
 } from './SymbolUtils';
-import { ComponentDataResolverWatchers } from './ComponentDataResolverWatchers';
-import { DynamicWatchersOptions } from './ComponentResolverWatcher';
-import { keyIsCollectionItem, keyCollectionsStateMap } from '../../data_sources/model/data_collection/constants';
+import { DataWatchersOptions } from './ModelResolverWatcher';
+import { DataCollectionStateMap } from '../../data_sources/model/data_collection/types';
+import { checkAndGetSyncableCollectionItemId } from '../../data_sources/utils';
 
 export interface IComponent extends ExtractMethods<Component> {}
-export interface SetAttrOptions extends SetOptions, UpdateStyleOptions, DynamicWatchersOptions {}
-export interface ComponentSetOptions extends SetOptions, DynamicWatchersOptions {}
+export interface SetAttrOptions extends SetOptions, UpdateStyleOptions, DataWatchersOptions {}
+export interface ComponentSetOptions extends SetOptions, DataWatchersOptions {}
 
 const escapeRegExp = (str: string) => {
   return str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
@@ -71,6 +76,10 @@ export const keySymbol = '__symbol';
 export const keySymbolOvrd = '__symbol_ovrd';
 export const keyUpdate = ComponentsEvents.update;
 export const keyUpdateInside = ComponentsEvents.updateInside;
+
+type GetComponentStyleOpts = GetStyleOpts & {
+  inline?: boolean;
+};
 
 /**
  * The Component object represents a single node of our template structure, so when you update its properties the changes are
@@ -95,7 +104,7 @@ export const keyUpdateInside = ComponentsEvents.updateInside;
  * @property {String} [name=''] Name of the component. Will be used, for example, in Layers and badges
  * @property {Boolean} [removable=true] When `true` the component is removable from the canvas, default: `true`
  * @property {Boolean|String|Function} [draggable=true] Indicates if it's possible to drag the component inside others.
- *  You can also specify a query string to indentify elements,
+ *  You can also specify a query string to identify elements,
  *  eg. `'.some-class[title=Hello], [data-gjs-type=column]'` means you can drag the component only inside elements
  *  containing `some-class` class and `Hello` title, and `column` components. In the case of a function, target and destination components are passed as arguments, return a Boolean to indicate if the drag is possible. Default: `true`
  * @property {Boolean|String|Function} [droppable=true] Indicates if it's possible to drop other components inside. You can use
@@ -223,6 +232,10 @@ export default class Component extends StyleableModel<ComponentProperties> {
     return this.frame?.getPage();
   }
 
+  getType() {
+    return this.get('type') || 'default';
+  }
+
   preInit() {}
 
   /**
@@ -258,23 +271,12 @@ export default class Component extends StyleableModel<ComponentProperties> {
    * @private
    * @ts-ignore */
   collection!: Components;
-  collectionStateListeners: string[] = [];
-  dataResolverWatchers: ComponentDataResolverWatchers;
 
   constructor(props: ComponentProperties = {}, opt: ComponentOptions) {
-    const dataResolverWatchers = new ComponentDataResolverWatchers(undefined, {
-      em: opt.em,
-      collectionsStateMap: props[keyCollectionsStateMap],
-    });
-    super(props, {
-      ...opt,
-      dataResolverWatchers,
-    } as any);
-    dataResolverWatchers.bindComponent(this);
-    this.dataResolverWatchers = dataResolverWatchers;
-
-    bindAll(this, '__upSymbProps', '__upSymbCls', '__upSymbComps');
     const em = opt.em;
+    super(props, opt);
+
+    bindAll(this, '__upSymbProps', '__upSymbCls', '__upSymbComps', 'syncOnComponentChange');
 
     // Propagate properties from parent if indicated
     const parent = this.parent();
@@ -299,12 +301,12 @@ export default class Component extends StyleableModel<ComponentProperties> {
     this.opt = opt;
     this.em = em!;
     this.config = opt.config || {};
-    const dynamicAttributes = this.dataResolverWatchers.getDynamicAttributesDefs();
-    this.setAttributes({
+    const defaultAttrs = {
       ...(result(this, 'defaults').attributes || {}),
       ...(this.get('attributes') || {}),
-      ...dynamicAttributes,
-    });
+    };
+    const attrs = this.dataResolverWatchers.getValueOrResolver('attributes', defaultAttrs);
+    this.setAttributes(attrs);
     this.ccid = Component.createId(this, opt);
     this.preInit();
     this.initClasses();
@@ -324,7 +326,7 @@ export default class Component extends StyleableModel<ComponentProperties> {
 
     // Register global updates for collection properties
     ['classes', 'traits', 'components'].forEach((name) => {
-      const events = `add remove ${name !== 'components' ? 'change' : ''}`;
+      const events = `add remove reset ${name !== 'components' ? 'change' : ''}`;
       this.listenTo(this.get(name), events.trim(), (...args) => this.emitUpdate(name, ...args));
     });
 
@@ -336,37 +338,60 @@ export default class Component extends StyleableModel<ComponentProperties> {
         cssc.addCollection(styles, { avoidUpdateStyle: true }, { group: `cmp:${type}` });
       }
 
+      this._moveInlineStyleToRule();
       this.__postAdd();
       this.init();
       isSymbol(this) && initSymbol(this);
       em?.trigger(ComponentsEvents.create, this, opt);
     }
+
+    if (avoidInline(em)) {
+      this.dataResolverWatchers.disableStyles();
+    }
   }
 
-  set<A extends string>(
-    keyOrAttributes: A | Partial<ComponentProperties>,
-    valueOrOptions?: ComponentProperties[A] | ComponentSetOptions,
-    optionsOrUndefined?: ComponentSetOptions,
-  ): this {
-    let attributes: Partial<ComponentProperties>;
-    let options: ComponentSetOptions & {
-      dataResolverWatchers?: ComponentDataResolverWatchers;
-    } = { skipWatcherUpdates: false, fromDataSource: false };
-    if (typeof keyOrAttributes === 'object') {
-      attributes = keyOrAttributes;
-      options = valueOrOptions || (options as ComponentSetOptions);
-    } else if (typeof keyOrAttributes === 'string') {
-      attributes = { [keyOrAttributes as string]: valueOrOptions };
-      options = optionsOrUndefined || options;
+  onCollectionsStateMapUpdate(collectionsStateMap: DataCollectionStateMap) {
+    super.onCollectionsStateMapUpdate(collectionsStateMap);
+    this._getStyleRule()?.onCollectionsStateMapUpdate(collectionsStateMap);
+
+    const cmps = this.components();
+    cmps.forEach((cmp) => cmp.onCollectionsStateMapUpdate(collectionsStateMap));
+  }
+
+  syncComponentsCollectionState() {
+    this.stopListening(this.components(), 'add remove reset', this.syncOnComponentChange);
+    this.listenTo(this.components(), 'add remove reset', this.syncOnComponentChange);
+    this.components().forEach((cmp) => cmp.syncComponentsCollectionState());
+  }
+
+  stopSyncComponentCollectionState() {
+    this.stopListening(this.components(), 'add remove reset', this.syncOnComponentChange);
+    this.collectionsStateMap = {};
+    this.components().forEach((cmp) => cmp.stopSyncComponentCollectionState());
+  }
+
+  syncOnComponentChange(model: Component, collection: Components, opts: any) {
+    if (!this.collectionsStateMap || !Object.keys(this.collectionsStateMap).length) return;
+    const options = opts || collection || {};
+
+    // Reset (in reset, 'model' is Collection, 'collection' is opts )
+    if (!opts) {
+      const modelsRemoved = options.previousModels || [];
+      modelsRemoved.forEach((cmp: Component) => cmp.stopSyncComponentCollectionState());
+      this.components().forEach((cmp) => {
+        cmp.syncComponentsCollectionState();
+        cmp.onCollectionsStateMapUpdate(this.collectionsStateMap);
+      });
+    } else if (options.add) {
+      // Add
+      const modelAdded = model;
+      modelAdded.syncComponentsCollectionState();
+      modelAdded.onCollectionsStateMapUpdate(this.collectionsStateMap);
     } else {
-      attributes = {};
-      options = optionsOrUndefined || options;
+      // Remove
+      const modelRemoved = model;
+      modelRemoved.stopSyncComponentCollectionState();
     }
-
-    this.dataResolverWatchers = this.dataResolverWatchers || options.dataResolverWatchers;
-    const evaluatedProps = this.dataResolverWatchers.addProps(attributes, options);
-
-    return super.set(evaluatedProps, options);
   }
 
   __postAdd(opts: { recursive?: boolean } = {}) {
@@ -406,12 +431,34 @@ export default class Component extends StyleableModel<ComponentProperties> {
     const { em } = this;
     if (!em) return;
 
-    const event = 'component:styleUpdate';
     const styleKeys = keys(newStyles);
     const pros = { style: newStyles };
 
-    em.trigger(event, this, pros);
-    styleKeys.forEach((key) => em.trigger(`${event}:${key}`, this, pros));
+    this.emitWithEditor(ComponentsEvents.styleUpdate, this, pros);
+    styleKeys.forEach((key) => this.emitWithEditor(`${ComponentsEvents.styleUpdateProperty}${key}`, this, pros));
+
+    const collectionsStateMap = this.collectionsStateMap;
+    const allParentCollectionIds = Object.keys(collectionsStateMap);
+    if (!allParentCollectionIds.length) return;
+
+    const isAtInitialPosition = allParentCollectionIds.every(
+      (key) => collectionsStateMap[key].currentIndex === collectionsStateMap[key].startIndex,
+    );
+    if (!isAtInitialPosition) return;
+
+    const componentsToUpdate = getSymbolsToUpdate(this);
+    componentsToUpdate.forEach((component) => {
+      const componentCollectionsState = component.collectionsStateMap;
+      const componentParentCollectionIds = Object.keys(componentCollectionsState);
+
+      const isChildOfOriginalCollections = componentParentCollectionIds.every((id) =>
+        allParentCollectionIds.includes(id),
+      );
+
+      if (isChildOfOriginalCollections) {
+        component.addStyle(newStyles);
+      }
+    });
   }
 
   __changesUp(opts: any) {
@@ -449,6 +496,8 @@ export default class Component extends StyleableModel<ComponentProperties> {
   __upSymbComps(m: Component, c: Components, o: any) {
     updateSymbolComps(this, m, c, o);
   }
+
+  __onDestroy() {}
 
   /**
    * Check component's type
@@ -505,7 +554,7 @@ export default class Component extends StyleableModel<ComponentProperties> {
    * @example
    * component.setSymbolOverride(['children', 'classes']);
    */
-  setSymbolOverride(value: boolean | string | string[], options: DynamicWatchersOptions = {}) {
+  setSymbolOverride(value: boolean | string | string[], options: DataWatchersOptions = {}) {
     this.set(
       {
         [keySymbolOvrd]: (isString(value) ? [value] : value) ?? 0,
@@ -706,11 +755,13 @@ export default class Component extends StyleableModel<ComponentProperties> {
    * component.addAttributes({ 'data-key': 'value' });
    */
   addAttributes(attrs: ObjectAny, opts: SetAttrOptions = {}) {
-    const dynamicAttributes = this.dataResolverWatchers.getDynamicAttributesDefs();
+    const previousAttrs = this.dataResolverWatchers.getValueOrResolver(
+      'attributes',
+      this.getAttributes({ noClass: true, noStyle: true }),
+    );
     return this.setAttributes(
       {
-        ...this.getAttributes({ noClass: true }),
-        ...dynamicAttributes,
+        ...previousAttrs,
         ...attrs,
       },
       opts,
@@ -728,7 +779,6 @@ export default class Component extends StyleableModel<ComponentProperties> {
    */
   removeAttributes(attrs: string | string[] = [], opts: SetOptions = {}) {
     const attrArr = Array.isArray(attrs) ? attrs : [attrs];
-    this.dataResolverWatchers.removeAttributes(attrArr);
 
     const compAttr = this.getAttributes();
     attrArr.map((i) => delete compAttr[i]);
@@ -739,27 +789,34 @@ export default class Component extends StyleableModel<ComponentProperties> {
    * Get the style of the component
    * @return {Object}
    */
-  getStyle(options: any = {}, optsAdd: any = {}) {
+  getStyle(opts?: GetComponentStyleOpts): StyleProps;
+  getStyle(prop: '' | undefined, opts?: GetComponentStyleOpts): StyleProps;
+  getStyle(
+    prop?: keyof StyleProps | '' | ObjectAny,
+    opts?: GetComponentStyleOpts,
+  ): StyleProps | StyleProps[keyof StyleProps] | undefined {
     const { em } = this;
-    const prop = isString(options) ? options : '';
-    const opts = prop ? optsAdd : options;
+    const isPropString = isString(prop);
+    const resolvedProp = isPropString ? prop : '';
+    const resolvedOpts = isPropString ? opts : prop;
+    const skipResolve = !!resolvedOpts?.skipResolve;
 
-    if (avoidInline(em) && !opts.inline) {
+    if (avoidInline(em) && !resolvedOpts?.inline) {
       const state = em.get('state');
       const cc = em.Css;
-      const rule = cc.getIdRule(this.getId(), { state, ...opts });
+      const rule = cc.getIdRule(this.getId(), { state, ...resolvedOpts });
       this.rule = rule;
 
       if (rule) {
-        return rule.getStyle(prop);
+        return rule.getStyle(resolvedProp, { skipResolve });
       }
 
-      // Return empty style if not rule have been found. We cannot return inline style with the next return
+      // Return empty style if no rule have been found. We cannot return inline style with the next return
       // because else on load inline style is set a #id or .class style
       return {};
     }
 
-    return super.getStyle.call(this, prop);
+    return super.getStyle.call(this, resolvedProp, { skipResolve });
   }
 
   /**
@@ -775,10 +832,10 @@ export default class Component extends StyleableModel<ComponentProperties> {
     if (avoidInline(em) && !opt.temporary && !opts.inline) {
       const style = this.get('style') || {};
       prop = isString(prop) ? this.parseStyle(prop) : prop;
-      prop = { ...prop, ...(style as any) };
+      prop = { ...(style as any), ...prop };
       const state = em.get('state');
       const cc = em.Css;
-      const propOrig = this.getStyle(opts);
+      const propOrig = this.getStyle({ ...opts, skipResolve: true });
       this.rule = cc.setIdRule(this.getId(), prop, { state, ...opts });
       const diff = shallowDiff(propOrig, prop);
       this.set('style', '', { silent: true });
@@ -798,10 +855,13 @@ export default class Component extends StyleableModel<ComponentProperties> {
    * Return all component's attributes
    * @return {Object}
    */
-  getAttributes(opts: { noClass?: boolean; noStyle?: boolean } = {}) {
+  getAttributes(opts: { noClass?: boolean; noStyle?: boolean; skipResolve?: boolean } = {}) {
     const { em } = this;
     const classes: string[] = [];
-    const attributes = { ...this.get('attributes') };
+    const resolvedAttrs = { ...this.get('attributes')! };
+    const attributes = opts?.skipResolve
+      ? this.dataResolverWatchers.getValueOrResolver('attributes', resolvedAttrs)
+      : resolvedAttrs;
     const sm = em?.Selectors;
     const id = this.getId();
 
@@ -970,12 +1030,8 @@ export default class Component extends StyleableModel<ComponentProperties> {
         if (name && value) attrs[name] = value;
       }
     });
-    const dynamicAttributes = this.dataResolverWatchers.getDynamicAttributesDefs();
-    traits.length &&
-      this.setAttributes({
-        ...attrs,
-        ...dynamicAttributes,
-      });
+    const resolvedAttributes = this.dataResolverWatchers.getValueOrResolver('attributes', attrs);
+    traits.length && this.setAttributes(resolvedAttributes);
     this.on(event, this.initTraits);
     changed && em && em.trigger('component:toggled');
     return this;
@@ -1317,16 +1373,10 @@ export default class Component extends StyleableModel<ComponentProperties> {
    * @ts-ignore */
   clone(opt: { symbol?: boolean; symbolInv?: boolean } = {}): this {
     const em = this.em;
-    const attr = {
-      ...this.attributes,
-      ...this.dataResolverWatchers.getDynamicPropsDefs(),
-    };
+    const attr = this.dataResolverWatchers.getProps(this.attributes);
     const opts = { ...this.opt };
     const id = this.getId();
     const cssc = em?.Css;
-    attr.attributes = {
-      ...(attr.attributes ? this.dataResolverWatchers.getAttributesDefsOrValues(attr.attributes) : undefined),
-    };
     // @ts-ignore
     attr.components = [];
     // @ts-ignore
@@ -1378,8 +1428,9 @@ export default class Component extends StyleableModel<ComponentProperties> {
       cloned.set(keySymbol, 0);
       cloned.set(keySymbols, 0);
     } else if (symbol) {
+      const mainSymbolInstances = getSymbolInstances(symbol) ?? [];
       // Contains already a reference to a symbol
-      symbol.set(keySymbols, [...getSymbolInstances(symbol)!, cloned]);
+      symbol.set(keySymbols, [...mainSymbolInstances!, cloned]);
       initSymbol(cloned);
     } else if (opt.symbol) {
       // Request to create a symbol
@@ -1582,9 +1633,7 @@ export default class Component extends StyleableModel<ComponentProperties> {
    * @private
    */
   toJSON(opts: ObjectAny = {}): ComponentDefinition {
-    let obj = Model.prototype.toJSON.call(this, opts);
-    obj = { ...obj, ...this.dataResolverWatchers.getDynamicPropsDefs() };
-    obj.attributes = this.dataResolverWatchers.getAttributesDefsOrValues(this.getAttributes());
+    let obj = super.toJSON(opts, { attributes: this.getAttributes() });
     delete obj.dataResolverWatchers;
     delete obj.attributes.class;
     delete obj.toolbar;
@@ -1593,12 +1642,10 @@ export default class Component extends StyleableModel<ComponentProperties> {
     delete obj.open; // used in Layers
     delete obj._undoexc;
     delete obj.delegate;
-    if (this.get(keyIsCollectionItem)) {
+    if (this.collectionsStateMap && Object.getOwnPropertyNames(this.collectionsStateMap).length > 0) {
       delete obj[keySymbol];
       delete obj[keySymbolOvrd];
       delete obj[keySymbols];
-      delete obj[keyCollectionsStateMap];
-      delete obj[keyIsCollectionItem];
       delete obj.attributes.id;
     }
 
@@ -1658,6 +1705,10 @@ export default class Component extends StyleableModel<ComponentProperties> {
    */
   getId(): string {
     let attrs = this.get('attributes') || {};
+    const { shouldSync, itemId } = checkAndGetSyncableCollectionItemId(this);
+    if (shouldSync) {
+      attrs.id = itemId;
+    }
     return attrs.id || this.ccid || this.cid;
   }
 
@@ -1770,8 +1821,8 @@ export default class Component extends StyleableModel<ComponentProperties> {
       });
   }
 
-  emitWithEitor(event: string, data?: Record<string, any>) {
-    [this.em, this].forEach((item) => item?.trigger(event, data));
+  emitWithEditor(event: string, data?: Record<string, any>, extra?: Record<string, any>) {
+    [this.em, this].forEach((item) => item?.trigger(event, data, extra));
   }
 
   /**
@@ -1830,7 +1881,9 @@ export default class Component extends StyleableModel<ComponentProperties> {
   }
 
   destroy(options?: ModelDestroyOptions | undefined): false | JQueryXHR {
+    this.stopListening(this.components(), 'add remove reset', this.syncOnComponentChange);
     this.dataResolverWatchers.destroy();
+    this.__onDestroy();
     return super.destroy(options);
   }
 
@@ -1949,6 +2002,20 @@ export default class Component extends StyleableModel<ComponentProperties> {
   _getStyleSelector(opts?: { id?: string }) {
     const rule = this._getStyleRule(opts);
     return rule?.get('selectors')!.at(0);
+  }
+
+  private _moveInlineStyleToRule() {
+    const inlineStyle = this.get('style');
+    const hasInlineStyle =
+      (isString(inlineStyle) && inlineStyle.length > 0) ||
+      (isObject(inlineStyle) && Object.keys(inlineStyle).length > 0);
+
+    if (avoidInline(this.em) && hasInlineStyle) {
+      this.addStyle(
+        isObject(inlineStyle) ? this.dataResolverWatchers.getValueOrResolver('styles', inlineStyle) : inlineStyle,
+        { avoidStore: true, noUndo: true },
+      );
+    }
   }
 
   _idUpdated(m: any, v: any, opts: { idUpdate?: boolean } = {}) {

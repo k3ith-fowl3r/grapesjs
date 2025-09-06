@@ -1,71 +1,47 @@
-import { ObjectAny } from '../../common';
-import { DataCollectionVariableType } from '../../data_sources/model/data_collection/constants';
-import { DataCollectionStateMap } from '../../data_sources/model/data_collection/types';
+import { ObjectAny, ObjectHash } from '../../common';
 import DataResolverListener from '../../data_sources/model/DataResolverListener';
-import { getDataResolverInstanceValue, isDataResolverProps } from '../../data_sources/model/utils';
+import { getDataResolverInstance, getDataResolverInstanceValue, isDataResolverProps } from '../../data_sources/utils';
+import StyleableModel from '../../domain_abstract/model/StyleableModel';
 import EditorModel from '../../editor/model/Editor';
-import { DataResolverProps } from '../../data_sources/types';
-import Component from './Component';
 
-export interface DynamicWatchersOptions {
+export interface DataWatchersOptions {
   skipWatcherUpdates?: boolean;
   fromDataSource?: boolean;
 }
 
-export interface ComponentResolverWatcherOptions {
+export interface ModelResolverWatcherOptions {
   em: EditorModel;
-  collectionsStateMap?: DataCollectionStateMap;
 }
 
-type UpdateFn = (component: Component | undefined, key: string, value: any) => void;
+export type WatchableModel<T extends ObjectHash> = StyleableModel<T> | undefined;
+export type UpdateFn<T extends ObjectHash> = (component: WatchableModel<T>, key: string, value: any) => void;
 
-export class ComponentResolverWatcher {
+export class ModelResolverWatcher<T extends ObjectHash> {
   private em: EditorModel;
-  private collectionsStateMap?: DataCollectionStateMap;
   private resolverListeners: Record<string, DataResolverListener> = {};
 
   constructor(
-    private component: Component | undefined,
-    private updateFn: UpdateFn,
-    options: ComponentResolverWatcherOptions,
+    private model: WatchableModel<T>,
+    private updateFn: UpdateFn<T>,
+    options: ModelResolverWatcherOptions,
   ) {
     this.em = options.em;
-    this.collectionsStateMap = options.collectionsStateMap;
   }
 
-  bindComponent(component: Component) {
-    this.component = component;
+  bindModel(model: WatchableModel<T>) {
+    this.model = model;
   }
 
-  updateCollectionStateMap(collectionsStateMap: DataCollectionStateMap) {
-    this.collectionsStateMap = collectionsStateMap;
-
-    const collectionVariablesKeys = this.getDynamicValuesOfType(DataCollectionVariableType);
-    const collectionVariablesObject = collectionVariablesKeys.reduce(
-      (acc: { [key: string]: DataResolverProps | null }, key) => {
-        acc[key] = null;
-        return acc;
-      },
-      {},
-    );
-    const newVariables = this.getSerializableValues(collectionVariablesObject);
-    const evaluatedValues = this.addDynamicValues(newVariables);
-
-    Object.keys(evaluatedValues).forEach((key) => {
-      this.updateFn(this.component, key, evaluatedValues[key]);
-    });
-  }
-
-  setDynamicValues(values: ObjectAny | undefined, options: DynamicWatchersOptions = {}) {
+  setDataValues(values: ObjectAny | undefined, options: DataWatchersOptions = {}) {
     const shouldSkipWatcherUpdates = options.skipWatcherUpdates || options.fromDataSource;
     if (!shouldSkipWatcherUpdates) {
       this.removeListeners();
     }
 
-    return this.addDynamicValues(values, options);
+    return this.addDataValues(values, options);
   }
 
-  addDynamicValues(values: ObjectAny | undefined, options: DynamicWatchersOptions = {}) {
+  addDataValues(values: ObjectAny | undefined, options: DataWatchersOptions = {}) {
     if (!values) return {};
     const evaluatedValues = this.evaluateValues(values);
 
@@ -75,6 +51,26 @@ export class ComponentResolverWatcher {
     }
 
     return evaluatedValues;
+  }
+
+  onCollectionsStateMapUpdate() {
+    const resolvesFromCollections = this.getValuesResolvingFromCollections();
+    if (!resolvesFromCollections.length) return;
+    resolvesFromCollections.forEach((key) =>
+      this.resolverListeners[key].resolver.updateCollectionsStateMap(this.collectionsStateMap),
+    );
+
+    const evaluatedValues = this.addDataValues(
+      this.getValuesOrResolver(Object.fromEntries(resolvesFromCollections.map((key) => [key, '']))),
+    );
+
+    Object.entries(evaluatedValues).forEach(([key, value]) => this.updateFn(this.model, key, value));
+  }
+
+  private get collectionsStateMap() {
+    const component = this.model;
+
+    return component?.collectionsStateMap ?? {};
   }
 
   private updateListeners(values: { [key: string]: any }) {
@@ -90,11 +86,11 @@ export class ComponentResolverWatcher {
         continue;
       }
 
-      const { resolver } = getDataResolverInstanceValue(resolverProps, { em, collectionsStateMap });
+      const resolver = getDataResolverInstance(resolverProps, { em, collectionsStateMap })!;
       this.resolverListeners[key] = new DataResolverListener({
         em,
         resolver,
-        onUpdate: (value) => this.updateFn.bind(this)(this.component, key, value),
+        onUpdate: (value) => this.updateFn(this.model, key, value),
       });
     }
   }
@@ -112,8 +108,7 @@ export class ComponentResolverWatcher {
         continue;
       }
 
-      const { value } = getDataResolverInstanceValue(resolverProps, { em, collectionsStateMap });
-      evaluatedValues[key] = value;
+      evaluatedValues[key] = getDataResolverInstanceValue(resolverProps, { em, collectionsStateMap });
     }
 
     return evaluatedValues;
@@ -137,9 +132,9 @@ export class ComponentResolverWatcher {
     return propsKeys;
   }
 
-  getSerializableValues(values: ObjectAny | undefined) {
+  getValuesOrResolver(values: ObjectAny) {
     if (!values) return {};
-    const serializableValues = { ...values };
+    const serializableValues: ObjectAny = { ...values };
     const propsKeys = Object.keys(serializableValues);
 
     for (let index = 0; index < propsKeys.length; index++) {
@@ -153,7 +148,7 @@ export class ComponentResolverWatcher {
     return serializableValues;
   }
 
-  getAllSerializableValues() {
+  getAllDataResolvers() {
     const serializableValues: ObjectAny = {};
     const propsKeys = Object.keys(this.resolverListeners);
 
@@ -165,10 +160,9 @@ export class ComponentResolverWatcher {
     return serializableValues;
   }
 
-  getDynamicValuesOfType(type: DataResolverProps['type']) {
+  getValuesResolvingFromCollections() {
     const keys = Object.keys(this.resolverListeners).filter((key: string) => {
-      // @ts-ignore
-      return this.resolverListeners[key].resolver.get('type') === type;
+      return this.resolverListeners[key].resolver.resolvesFromCollection();
     });
 
     return keys;

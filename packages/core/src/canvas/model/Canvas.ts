@@ -1,7 +1,7 @@
 import CanvasModule from '..';
 import { ModuleModel } from '../../abstract';
-import { Coordinates, CoordinatesTypes, DEFAULT_COORDS } from '../../common';
-import { evUpdate as evDeviceUpdate } from '../../device_manager';
+import { Coordinates, CoordinatesTypes, DEFAULT_COORDS, ObjectAny } from '../../common';
+import DeviceEvents from '../../device_manager/types';
 import Page from '../../pages/model/Page';
 import PagesEvents from '../../pages/types';
 import Frame from './Frame';
@@ -33,7 +33,7 @@ export default class Canvas extends ModuleModel<CanvasModule> {
     this.on('change:zoom', this.onZoomChange);
     this.on('change:x change:y', this.onCoordsChange);
     this.on('change:pointer change:pointerScreen', this.onPointerChange);
-    this.listenTo(em, `change:device ${evDeviceUpdate}`, this.updateDevice);
+    this.listenTo(em, `change:device ${DeviceEvents.update}`, this.updateDevice);
     this.listenTo(em, PagesEvents.select, this._pageUpdated);
   }
 
@@ -52,7 +52,10 @@ export default class Canvas extends ModuleModel<CanvasModule> {
     const { em } = this;
     em.setSelected();
     em.get('readyCanvas') && em.stopDefault(); // We have to stop before changing current frames
-    prev?.getFrames().map((frame) => frame.disable());
+    prev?.getFrames().map((frame) => {
+      frame.disable();
+      frame._emitUnload();
+    });
     this.set('frames', page.getFrames());
     this.updateDevice({ frame: page.getMainFrame() });
   }
@@ -68,11 +71,11 @@ export default class Canvas extends ModuleModel<CanvasModule> {
     }
   }
 
-  onZoomChange() {
+  onZoomChange(m: any, v: any, options: ObjectAny) {
     const { em, module } = this;
     const zoom = this.get('zoom');
     zoom < 1 && this.set('zoom', 1);
-    em.trigger(module.events.zoom);
+    em.trigger(module.events.zoom, { options });
   }
 
   onCoordsChange() {

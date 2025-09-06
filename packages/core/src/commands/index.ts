@@ -40,8 +40,8 @@ import CommandAbstract, { Command, CommandOptions, CommandObject, CommandFunctio
 import defConfig, { CommandsConfig } from './config/config';
 import { Module } from '../abstract';
 import Component, { eventDrag } from '../dom_components/model/Component';
-import Editor from '../editor/model/Editor';
-import { ObjectAny } from '../common';
+import type Editor from '../editor/model/Editor';
+import type { ObjectAny } from '../common';
 import CommandsEvents from './types';
 
 export type CommandEvent = 'run' | 'stop' | `run:${string}` | `stop:${string}` | `abort:${string}`;
@@ -151,7 +151,7 @@ export default class CommandsModule extends Module<CommandsConfig & { pStylePref
           return em.logWarning('The element is not draggable');
         }
 
-        const mode = target.get('dmode') || em.get('dmode');
+        const mode = opts.mode || target.get('dmode') || em.get('dmode');
         const hideTlb = () => em.stopDefault(defComOptions);
         const altMode = includes(modes, mode);
         targets.forEach((trg) => trg.trigger('disable', { fromMove: true }));
@@ -176,7 +176,7 @@ export default class CommandsModule extends Module<CommandsConfig & { pStylePref
           });
         } else {
           if (nativeDrag) {
-            event.dataTransfer.setDragImage(target.view?.el, 0, 0);
+            event?.dataTransfer?.setDragImage(target.view?.el, 0, 0);
             //sel.set('status', 'freezed');
           }
 
@@ -389,6 +389,8 @@ export default class CommandsModule extends Module<CommandsConfig & { pStylePref
       const editor = em.Editor;
 
       if (!this.isActive(id) || options.force || !config.strict) {
+        const defaultOptionsRunFn = config.defaultOptions?.[id]?.run;
+        isFunction(defaultOptionsRunFn) && (options = defaultOptionsRunFn(options));
         result = editor && (command as any).callRun(editor, options);
       }
     }
@@ -412,6 +414,8 @@ export default class CommandsModule extends Module<CommandsConfig & { pStylePref
       const editor = em.Editor;
 
       if (this.isActive(id) || options.force || !config.strict) {
+        const defaultOptionsStopFn = config.defaultOptions?.[id]?.stop;
+        isFunction(defaultOptionsStopFn) && (options = defaultOptionsStopFn(options));
         result = (command as any).callStop(editor, options);
       }
     }

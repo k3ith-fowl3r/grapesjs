@@ -539,7 +539,7 @@ export default class StyleManager extends ItemManagerModule<
    * @return {Model}
    * @private
    */
-  getModelToStyle(model: any, options: { skipAdd?: boolean; useClasses?: boolean } = {}) {
+  getModelToStyle(model: any, options: { skipAdd?: boolean; useClasses?: boolean } = {}): StyleableModel {
     const { em } = this;
     const { skipAdd } = options;
 
@@ -805,9 +805,9 @@ export default class StyleManager extends ItemManagerModule<
       props.forEach((prop) => {
         const isVisible = prop.__checkVisibility({
           target: lastTarget,
+          sector,
           component,
-          // @ts-ignore
-          sectors,
+          sectors: sectors.models,
         });
         prop.set('visible', isVisible);
       });

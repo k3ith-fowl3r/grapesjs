@@ -2,44 +2,21 @@
 
 exports[`Collection component Serialization Saving: Collection with grandchildren 1`] = `
 {
-  "collectionDef": {
-    "collectionConfig": {
-      "collectionId": "my_collection",
-      "dataSource": {
-        "path": "my_data_source_id",
-        "type": "data-variable",
-      },
-      "endIndex": 1,
-      "startIndex": 0,
-    },
-    "componentDef": {
-      "attributes": {
-        "attribute_trait": {
-          "collectionId": "my_collection",
-          "path": "user",
-          "type": "data-collection-variable",
-          "variableType": "currentItem",
-        },
-        "name": {
-          "collectionId": "my_collection",
-          "path": "user",
-          "type": "data-collection-variable",
-          "variableType": "currentItem",
-        },
-      },
+  "components": [
+    {
       "components": [
         {
           "attributes": {
             "attribute_trait": {
               "collectionId": "my_collection",
               "path": "user",
-              "type": "data-collection-variable",
+              "type": "data-variable",
               "variableType": "currentItem",
             },
             "name": {
               "collectionId": "my_collection",
               "path": "user",
-              "type": "data-collection-variable",
+              "type": "data-variable",
               "variableType": "currentItem",
             },
           },
@@ -48,7 +25,7 @@ exports[`Collection component Serialization Saving: Collection with grandchildre
               "name": {
                 "collectionId": "my_collection",
                 "path": "user",
-                "type": "data-collection-variable",
+                "type": "data-variable",
                 "variableType": "currentIndex",
               },
               "type": "default",
@@ -57,79 +34,35 @@ exports[`Collection component Serialization Saving: Collection with grandchildre
           "custom_prop": {
             "collectionId": "my_collection",
             "path": "user",
-            "type": "data-collection-variable",
+            "type": "data-variable",
             "variableType": "currentIndex",
           },
           "name": {
             "collectionId": "my_collection",
             "path": "user",
-            "type": "data-collection-variable",
+            "type": "data-variable",
             "variableType": "currentItem",
           },
           "property_trait": {
             "collectionId": "my_collection",
             "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentItem",
-          },
-          "type": "default",
-        },
-        {
-          "attributes": {
-            "attribute_trait": {
-              "collectionId": "my_collection",
-              "path": "user",
-              "type": "data-collection-variable",
-              "variableType": "currentItem",
-            },
-            "name": {
-              "collectionId": "my_collection",
-              "path": "user",
-              "type": "data-collection-variable",
-              "variableType": "currentItem",
-            },
-          },
-          "custom_prop": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentIndex",
-          },
-          "name": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentItem",
-          },
-          "property_trait": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
+            "type": "data-variable",
             "variableType": "currentItem",
           },
           "type": "default",
         },
       ],
-      "custom_prop": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentIndex",
-      },
-      "name": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentItem",
-      },
-      "property_trait": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentItem",
-      },
-      "type": "default",
+      "type": "data-collection-item",
     },
+  ],
+  "dataResolver": {
+    "collectionId": "my_collection",
+    "dataSource": {
+      "path": "my_data_source_id",
+      "type": "data-variable",
+    },
+    "endIndex": 1,
+    "startIndex": 0,
   },
   "type": "data-collection",
 }
@@ -137,178 +70,92 @@ exports[`Collection component Serialization Saving: Collection with grandchildre
 
 exports[`Collection component Serialization Saving: Collection with no grandchildren 1`] = `
 {
-  "collectionDef": {
-    "collectionConfig": {
-      "collectionId": "my_collection",
-      "dataSource": {
-        "path": "my_data_source_id",
-        "type": "data-variable",
-      },
-      "endIndex": 1,
-      "startIndex": 0,
-    },
-    "componentDef": {
-      "attributes": {
-        "attribute_trait": {
-          "collectionId": "my_collection",
-          "path": "user",
-          "type": "data-collection-variable",
-          "variableType": "currentItem",
-        },
-        "name": {
-          "collectionId": "my_collection",
-          "path": "user",
-          "type": "data-collection-variable",
-          "variableType": "currentItem",
-        },
-      },
+  "components": [
+    {
       "components": [
         {
           "attributes": {
             "attribute_trait": {
               "collectionId": "my_collection",
               "path": "user",
-              "type": "data-collection-variable",
+              "type": "data-variable",
               "variableType": "currentItem",
             },
             "name": {
               "collectionId": "my_collection",
               "path": "user",
-              "type": "data-collection-variable",
-              "variableType": "currentItem",
-            },
-          },
-          "custom_prop": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentIndex",
-          },
-          "name": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentItem",
-          },
-          "property_trait": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentItem",
-          },
-          "type": "default",
-        },
-        {
-          "attributes": {
-            "attribute_trait": {
-              "collectionId": "my_collection",
-              "path": "user",
-              "type": "data-collection-variable",
-              "variableType": "currentItem",
-            },
-            "name": {
-              "collectionId": "my_collection",
-              "path": "user",
-              "type": "data-collection-variable",
-              "variableType": "currentItem",
-            },
-          },
-          "custom_prop": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentIndex",
-          },
-          "name": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentItem",
-          },
-          "property_trait": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentItem",
-          },
-          "type": "default",
-        },
-      ],
-      "custom_prop": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentIndex",
-      },
-      "name": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentItem",
-      },
-      "property_trait": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentItem",
-      },
-      "type": "default",
-    },
-  },
-  "type": "data-collection",
-}
-`;
-
-exports[`Collection component Serialization Serializion with Collection Variables to JSON: Collection with grandchildren 1`] = `
-{
-  "collectionDef": {
-    "collectionConfig": {
-      "collectionId": "my_collection",
-      "dataSource": {
-        "path": "my_data_source_id",
-        "type": "data-variable",
-      },
-      "endIndex": 1,
-      "startIndex": 0,
-    },
-    "componentDef": {
-      "attributes": {
-        "attribute_trait": {
-          "collectionId": "my_collection",
-          "path": "user",
-          "type": "data-collection-variable",
-          "variableType": "currentItem",
-        },
-        "name": {
-          "collectionId": "my_collection",
-          "path": "user",
-          "type": "data-collection-variable",
-          "variableType": "currentItem",
-        },
-      },
-      "components": [
-        {
-          "attributes": {
-            "attribute_trait": {
-              "collectionId": "my_collection",
-              "path": "user",
-              "type": "data-collection-variable",
-              "variableType": "currentItem",
-            },
-            "name": {
-              "collectionId": "my_collection",
-              "path": "user",
-              "type": "data-collection-variable",
+              "type": "data-variable",
               "variableType": "currentItem",
             },
           },
           "components": [
             {
+              "attributes": {
+                "attribute_trait": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+                "name": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+              },
+              "custom_prop": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentIndex",
+              },
               "name": {
                 "collectionId": "my_collection",
                 "path": "user",
-                "type": "data-collection-variable",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "property_trait": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "type": "default",
+            },
+            {
+              "attributes": {
+                "attribute_trait": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+                "name": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+              },
+              "custom_prop": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
                 "variableType": "currentIndex",
+              },
+              "name": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "property_trait": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
               },
               "type": "default",
             },
@@ -316,79 +163,175 @@ exports[`Collection component Serialization Serializion with Collection Variable
           "custom_prop": {
             "collectionId": "my_collection",
             "path": "user",
-            "type": "data-collection-variable",
+            "type": "data-variable",
             "variableType": "currentIndex",
           },
           "name": {
             "collectionId": "my_collection",
             "path": "user",
-            "type": "data-collection-variable",
+            "type": "data-variable",
             "variableType": "currentItem",
           },
           "property_trait": {
             "collectionId": "my_collection",
             "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentItem",
-          },
-          "type": "default",
-        },
-        {
-          "attributes": {
-            "attribute_trait": {
-              "collectionId": "my_collection",
-              "path": "user",
-              "type": "data-collection-variable",
-              "variableType": "currentItem",
-            },
-            "name": {
-              "collectionId": "my_collection",
-              "path": "user",
-              "type": "data-collection-variable",
-              "variableType": "currentItem",
-            },
-          },
-          "custom_prop": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentIndex",
-          },
-          "name": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentItem",
-          },
-          "property_trait": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
+            "type": "data-variable",
             "variableType": "currentItem",
           },
           "type": "default",
         },
       ],
-      "custom_prop": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentIndex",
-      },
-      "name": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentItem",
-      },
-      "property_trait": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentItem",
-      },
-      "type": "default",
+      "type": "data-collection-item",
     },
+  ],
+  "dataResolver": {
+    "collectionId": "my_collection",
+    "dataSource": {
+      "path": "my_data_source_id",
+      "type": "data-variable",
+    },
+    "endIndex": 1,
+    "startIndex": 0,
+  },
+  "type": "data-collection",
+}
+`;
+
+exports[`Collection component Serialization Serializion with Collection Variables to JSON: Collection with grandchildren 1`] = `
+{
+  "components": [
+    {
+      "components": [
+        {
+          "attributes": {
+            "attribute_trait": {
+              "collectionId": "my_collection",
+              "path": "user",
+              "type": "data-variable",
+              "variableType": "currentItem",
+            },
+            "name": {
+              "collectionId": "my_collection",
+              "path": "user",
+              "type": "data-variable",
+              "variableType": "currentItem",
+            },
+          },
+          "components": [
+            {
+              "attributes": {
+                "attribute_trait": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+                "name": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+              },
+              "components": [
+                {
+                  "name": {
+                    "collectionId": "my_collection",
+                    "path": "user",
+                    "type": "data-variable",
+                    "variableType": "currentIndex",
+                  },
+                  "type": "default",
+                },
+              ],
+              "custom_prop": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentIndex",
+              },
+              "name": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "property_trait": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "type": "default",
+            },
+            {
+              "attributes": {
+                "attribute_trait": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+                "name": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+              },
+              "custom_prop": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentIndex",
+              },
+              "name": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "property_trait": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "type": "default",
+            },
+          ],
+          "custom_prop": {
+            "collectionId": "my_collection",
+            "path": "user",
+            "type": "data-variable",
+            "variableType": "currentIndex",
+          },
+          "name": {
+            "collectionId": "my_collection",
+            "path": "user",
+            "type": "data-variable",
+            "variableType": "currentItem",
+          },
+          "property_trait": {
+            "collectionId": "my_collection",
+            "path": "user",
+            "type": "data-variable",
+            "variableType": "currentItem",
+          },
+          "type": "default",
+        },
+      ],
+      "type": "data-collection-item",
+    },
+  ],
+  "dataResolver": {
+    "collectionId": "my_collection",
+    "dataSource": {
+      "path": "my_data_source_id",
+      "type": "data-variable",
+    },
+    "endIndex": 1,
+    "startIndex": 0,
   },
   "type": "data-collection",
 }
@@ -396,123 +339,128 @@ exports[`Collection component Serialization Serializion with Collection Variable
 
 exports[`Collection component Serialization Serializion with Collection Variables to JSON: Collection with no grandchildren 1`] = `
 {
-  "collectionDef": {
-    "collectionConfig": {
-      "collectionId": "my_collection",
-      "dataSource": {
-        "path": "my_data_source_id",
-        "type": "data-variable",
-      },
-      "endIndex": 1,
-      "startIndex": 0,
-    },
-    "componentDef": {
-      "attributes": {
-        "attribute_trait": {
-          "collectionId": "my_collection",
-          "path": "user",
-          "type": "data-collection-variable",
-          "variableType": "currentItem",
-        },
-        "name": {
-          "collectionId": "my_collection",
-          "path": "user",
-          "type": "data-collection-variable",
-          "variableType": "currentItem",
-        },
-      },
+  "components": [
+    {
       "components": [
         {
           "attributes": {
             "attribute_trait": {
               "collectionId": "my_collection",
               "path": "user",
-              "type": "data-collection-variable",
+              "type": "data-variable",
               "variableType": "currentItem",
             },
             "name": {
               "collectionId": "my_collection",
               "path": "user",
-              "type": "data-collection-variable",
+              "type": "data-variable",
               "variableType": "currentItem",
             },
           },
+          "components": [
+            {
+              "attributes": {
+                "attribute_trait": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+                "name": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+              },
+              "custom_prop": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentIndex",
+              },
+              "name": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "property_trait": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "type": "default",
+            },
+            {
+              "attributes": {
+                "attribute_trait": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+                "name": {
+                  "collectionId": "my_collection",
+                  "path": "user",
+                  "type": "data-variable",
+                  "variableType": "currentItem",
+                },
+              },
+              "custom_prop": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentIndex",
+              },
+              "name": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "property_trait": {
+                "collectionId": "my_collection",
+                "path": "user",
+                "type": "data-variable",
+                "variableType": "currentItem",
+              },
+              "type": "default",
+            },
+          ],
           "custom_prop": {
             "collectionId": "my_collection",
             "path": "user",
-            "type": "data-collection-variable",
+            "type": "data-variable",
             "variableType": "currentIndex",
           },
           "name": {
             "collectionId": "my_collection",
             "path": "user",
-            "type": "data-collection-variable",
+            "type": "data-variable",
             "variableType": "currentItem",
           },
           "property_trait": {
             "collectionId": "my_collection",
             "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentItem",
-          },
-          "type": "default",
-        },
-        {
-          "attributes": {
-            "attribute_trait": {
-              "collectionId": "my_collection",
-              "path": "user",
-              "type": "data-collection-variable",
-              "variableType": "currentItem",
-            },
-            "name": {
-              "collectionId": "my_collection",
-              "path": "user",
-              "type": "data-collection-variable",
-              "variableType": "currentItem",
-            },
-          },
-          "custom_prop": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentIndex",
-          },
-          "name": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
-            "variableType": "currentItem",
-          },
-          "property_trait": {
-            "collectionId": "my_collection",
-            "path": "user",
-            "type": "data-collection-variable",
+            "type": "data-variable",
             "variableType": "currentItem",
           },
           "type": "default",
         },
       ],
-      "custom_prop": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentIndex",
-      },
-      "name": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentItem",
-      },
-      "property_trait": {
-        "collectionId": "my_collection",
-        "path": "user",
-        "type": "data-collection-variable",
-        "variableType": "currentItem",
-      },
-      "type": "default",
+      "type": "data-collection-item",
     },
+  ],
+  "dataResolver": {
+    "collectionId": "my_collection",
+    "dataSource": {
+      "path": "my_data_source_id",
+      "type": "data-variable",
+    },
+    "endIndex": 1,
+    "startIndex": 0,
   },
   "type": "data-collection",
 }

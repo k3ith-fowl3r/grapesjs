@@ -68,6 +68,7 @@ export const grapesjs = {
     };
     const editor = new Editor(initConfig, { $ });
     const em = editor.getModel();
+    em.initModules();
 
     // Load plugins
     initConfig.plugins!.forEach((pluginId) => {
@@ -96,6 +97,7 @@ export const grapesjs = {
  * @deprecated Changed to CategoryProperties
  */
 export type { CategoryProperties as BlockCategoryProperties } from './abstract/ModuleCategory';
+export type { ComponentDragEventProps } from './commands/view/ComponentDrag';
 
 // Exports for TS
 export type { default as Asset } from './asset_manager/model/Asset';
@@ -145,5 +147,15 @@ export type { default as DataSources } from './data_sources/model/DataSources';
 export type { default as DataSource } from './data_sources/model/DataSource';
 export type { default as DataRecord } from './data_sources/model/DataRecord';
 export type { default as DataRecords } from './data_sources/model/DataRecords';
+export type { default as DataVariable } from './data_sources/model/DataVariable';
+export type { default as ComponentDataVariable } from './data_sources/model/ComponentDataVariable';
+export type { default as ComponentDataCollection } from './data_sources/model/data_collection/ComponentDataCollection';
+export type { default as ComponentDataCondition } from './data_sources/model/conditional_variables/ComponentDataCondition';
+export type {
+  DataCondition,
+  LogicGroupProps,
+  DataConditionProps,
+  ExpressionProps,
+} from './data_sources/model/conditional_variables/DataCondition';
 
 export default grapesjs;

@@ -45,7 +45,7 @@ import { CanvasSpotBuiltInTypes } from '../../canvas/model/CanvasSpot';
 import DataSourceManager from '../../data_sources';
 import { ComponentsEvents } from '../../dom_components/types';
 import { InitEditorConfig } from '../..';
-import { EditorEvents } from '../types';
+import { EditorEvents, SelectComponentOptions } from '../types';
 
 Backbone.$ = $;
 
@@ -71,11 +71,11 @@ const deps: (new (em: EditorModel) => IModule)[] = [
   DataSourceManager,
 ];
 const storableDeps: (new (em: EditorModel) => IModule & IStorableModule)[] = [
+  DataSourceManager, // Ensure DS are loaded before other modules
   AssetManager,
   CssComposer,
   PageManager,
   ComponentManager,
-  DataSourceManager,
 ];
 
 Extender({ $ });
@@ -115,9 +115,11 @@ export default class EditorModel extends Model {
   events = EditorEvents;
   __skip = false;
   defaultRunning = false;
+  loadTriggered = false;
   destroyed = false;
   _config: InitEditorConfig;
   _storageTimeout?: ReturnType<typeof setTimeout>;
+  _isStoring: boolean = false;
   attrsOrig: any;
   timedInterval?: ReturnType<typeof setTimeout>;
   updateItr?: ReturnType<typeof setTimeout>;
@@ -314,6 +316,18 @@ export default class EditorModel extends Model {
     return this.config.grapesjs?.version || '';
   }
 
+  get isHeadless() {
+    return !!this.config.headless;
+  }
+
+  get isShallow() {
+    return !!this.get('isShallow');
+  }
+
+  initModules() {
+    this.modules.forEach((module) => module.onInit());
+  }
+
   /**
    * Get configurations
    * @param  {string} [prop] Property name
@@ -448,7 +462,7 @@ export default class EditorModel extends Model {
    * */
   handleUpdates(model: any, val: any, opt: any = {}) {
     // Component has been added temporarily - do not update storage or record changes
-    if (this.__skip || opt.temporary || opt.noCount || opt.avoidStore || opt.partial || !this.get('ready')) {
+    if (this.__skip || !this.loadTriggered || opt.temporary || opt.noCount || opt.avoidStore || opt.partial) {
       return;
     }
 
@@ -501,7 +515,7 @@ export default class EditorModel extends Model {
    * @param  {Object} [opts={}] Options, optional
    * @public
    */
-  setSelected(el?: Component | Component[], opts: any = {}) {
+  setSelected(el?: Component | Component[], opts: SelectComponentOptions = {}) {
     const { event } = opts;
     const ctrlKey = event && (event.ctrlKey || event.metaKey);
     const { shiftKey } = event || {};
@@ -588,7 +602,7 @@ export default class EditorModel extends Model {
    * @param  {Object} [opts={}] Options, optional
    * @public
    */
-  addSelected(component: Component | Component[], opts: any = {}) {
+  addSelected(component: Component | Component[], opts: SelectComponentOptions = {}) {
     const models: Component[] = isArray(component) ? component : [component];
 
     models.forEach((model) => {
@@ -612,6 +626,16 @@ export default class EditorModel extends Model {
         type: CanvasSpotBuiltInTypes.Select,
         component: model,
       });
+
+      if (opts.activate) {
+        const view = model.getView();
+
+        if (view?.rendered) {
+          view.onActive(opts.event);
+        } else {
+          model.once(ComponentsEvents.render, ({ view }) => view.onActive(opts.event));
+        }
+      }
     });
   }
 
@@ -846,9 +870,19 @@ export default class EditorModel extends Model {
    * @public
    */
   async store<T extends StorageOptions>(options?: T) {
+    if (this._isStoring) return;
+    this._isStoring = true;
+    // We use a 1ms timeout to defer the cleanup to the next tick of the event loop.
+    // This prevents a race condition where a store operation, like 'sync:content',
+    // might increase the dirty count before it can be properly cleared.
+    setTimeout(() => {
+      this.clearDirtyCount();
+    }, 1);
     const data = this.storeData();
     await this.Storage.store(data, options);
-    this.clearDirtyCount();
+    setTimeout(() => {
+      this._isStoring = false;
+    }, 1);
     return data;
   }
 
@@ -884,14 +918,16 @@ export default class EditorModel extends Model {
     return project;
   }
 
-  loadData(project: ProjectData = {}, opts: EditorLoadOptions = {}): ProjectData {
+  loadData(project: ProjectData = {}, options: EditorLoadOptions = {}): ProjectData {
+    const evData = { project, options, initial: !!options.initial };
     let loaded = false;
     if (!isEmptyObj(project)) {
       this.storables.forEach((module) => module.clear());
       this.storables.forEach((module) => module.load(project));
       loaded = true;
     }
-    this.trigger(EditorEvents.projectLoad, { project, loaded, initial: !!opts.initial });
+    this.trigger(EditorEvents.projectLoad, { ...evData, loaded });
+    loaded && this.trigger(EditorEvents.projectLoaded, evData);
     return project;
   }
 

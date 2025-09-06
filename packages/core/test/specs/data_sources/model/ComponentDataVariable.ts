@@ -1,9 +1,9 @@
 import DataSourceManager from '../../../../src/data_sources';
 import ComponentWrapper from '../../../../src/dom_components/model/ComponentWrapper';
 import { DataVariableType } from '../../../../src/data_sources/model/DataVariable';
-import { DataSourceProps } from '../../../../src/data_sources/types';
 import { setupTestEditor } from '../../../common';
 import EditorModel from '../../../../src/editor/model/Editor';
+import ComponentDataVariable from '../../../../src/data_sources/model/ComponentDataVariable';
 
 describe('ComponentDataVariable', () => {
   let em: EditorModel;
@@ -31,8 +31,7 @@ describe('ComponentDataVariable', () => {
       components: [
         {
           type: DataVariableType,
-          defaultValue: 'default',
-          path: 'ds1.id1.name',
+          dataResolver: { defaultValue: 'default', path: 'ds1.id1.name' },
         },
       ],
     })[0];
@@ -54,8 +53,7 @@ describe('ComponentDataVariable', () => {
       components: [
         {
           type: DataVariableType,
-          defaultValue: 'default',
-          path: 'ds2.id1.name',
+          dataResolver: { defaultValue: 'default', path: 'ds2.id1.name' },
         },
       ],
     })[0];
@@ -77,8 +75,7 @@ describe('ComponentDataVariable', () => {
       components: [
         {
           type: DataVariableType,
-          defaultValue: 'default',
-          path: 'unknown.id1.name',
+          dataResolver: { defaultValue: 'default', path: 'unknown.id1.name' },
         },
       ],
     })[0];
@@ -99,8 +96,7 @@ describe('ComponentDataVariable', () => {
       components: [
         {
           type: DataVariableType,
-          defaultValue: 'default',
-          path: 'ds3.id1.name',
+          dataResolver: { defaultValue: 'default', path: 'ds3.id1.name' },
         },
       ],
     })[0];
@@ -126,8 +122,7 @@ describe('ComponentDataVariable', () => {
       components: [
         {
           type: DataVariableType,
-          defaultValue: 'default',
-          path: `${dataSource.id}.id1.name`,
+          dataResolver: { defaultValue: 'default', path: `${dataSource.id}.id1.name` },
         },
       ],
     })[0];
@@ -155,8 +150,7 @@ describe('ComponentDataVariable', () => {
       components: [
         {
           type: DataVariableType,
-          defaultValue: 'default',
-          path: 'ds4.id1.name',
+          dataResolver: { defaultValue: 'default', path: 'ds4.id1.name' },
         },
       ],
     })[0];
@@ -191,8 +185,7 @@ describe('ComponentDataVariable', () => {
       components: [
         {
           type: DataVariableType,
-          defaultValue: 'default',
-          path: 'dsNestedObject.id1.nestedObject.name',
+          dataResolver: { defaultValue: 'default', path: 'dsNestedObject.id1.nestedObject.name' },
         },
       ],
     })[0];
@@ -232,8 +225,7 @@ describe('ComponentDataVariable', () => {
       components: [
         {
           type: DataVariableType,
-          defaultValue: 'default',
-          path: 'dsNestedArray.id1.items.0.nestedObject.name',
+          dataResolver: { defaultValue: 'default', path: 'dsNestedArray.id1.items.0.nestedObject.name' },
         },
       ],
     })[0];
@@ -268,8 +260,7 @@ describe('ComponentDataVariable', () => {
       components: [
         {
           type: DataVariableType,
-          defaultValue: 'default',
-          path: `${dataSource.id}.id1.content`,
+          dataResolver: { defaultValue: 'default', path: `${dataSource.id}.id1.content` },
         },
       ],
       style: {
@@ -291,5 +282,57 @@ describe('ComponentDataVariable', () => {
     const updatedStyle = cmp.getStyle();
     expect(updatedStyle).toHaveProperty('color', 'blue');
     expect(cmp.getEl()?.innerHTML).toContain('Hello World UP');
+  });
+
+  test("fixes: ComponentDataVariable dataResolver type 'data-variable' issue", () => {
+    const dataSource = {
+      id: 'ds1',
+      records: [{ id: 'id1', name: 'Name1' }],
+    };
+    dsm.add(dataSource);
+
+    const dataResolver = { type: DataVariableType, defaultValue: 'default', path: 'ds1.id1.name' };
+    const cmp = cmpRoot.append({
+      type: DataVariableType,
+      dataResolver,
+    })[0] as ComponentDataVariable;
+
+    expect(cmp.getDataResolver()).toBe(dataResolver);
+    expect(cmp.getEl()?.innerHTML).toContain('Name1');
+    expect(cmp.getInnerHTML()).toContain('Name1');
+  });
+
+  test('renders content as plain text or HTML based on asPlainText option', () => {
+    const htmlContent = '<p>Hello <strong>World</strong>!</p>';
+    const plainTextContent = '&lt;p&gt;Hello &lt;strong&gt;World&lt;/strong&gt;!&lt;/p&gt;';
+    const dataSource = {
+      id: 'dsHtmlTest',
+      records: [{ id: 'r1', content: htmlContent }],
+    };
+    dsm.add(dataSource);
+
+    // Scenario 1: asPlainText is true
+    const cmpPlainText = cmpRoot.append({
+      type: DataVariableType,
+      dataResolver: { path: 'dsHtmlTest.r1.content', asPlainText: true },
+    })[0] as ComponentDataVariable;
+    expect(cmpPlainText.getEl()?.innerHTML).toBe(plainTextContent);
+    expect(cmpPlainText.getEl()?.textContent).toBe(htmlContent);
+
+    // Scenario 2: asPlainText is false
+    const cmpHtml = cmpRoot.append({
+      type: DataVariableType,
+      dataResolver: { path: 'dsHtmlTest.r1.content', asPlainText: false },
+    })[0] as ComponentDataVariable;
+    expect(cmpHtml.getEl()?.innerHTML).toBe(htmlContent);
+    expect(cmpHtml.getEl()?.textContent).toBe('Hello World!');
+
+    // Scenario 3: asPlainText is omitted (should default to HTML rendering)
+    const cmpDefaultHtml = cmpRoot.append({
+      type: DataVariableType,
+      dataResolver: { path: 'dsHtmlTest.r1.content' },
+    })[0] as ComponentDataVariable;
+    expect(cmpDefaultHtml.getEl()?.innerHTML).toBe(htmlContent);
+    expect(cmpDefaultHtml.getEl()?.textContent).toBe('Hello World!');
   });
 });

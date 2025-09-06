@@ -1,13 +1,12 @@
 import { bindAll, debounce, isElement } from 'underscore';
+import { CanvasSpotBuiltInTypes } from '../../canvas/model/CanvasSpot';
 import Component from '../../dom_components/model/Component';
 import Toolbar from '../../dom_components/model/Toolbar';
+import { ComponentsEvents } from '../../dom_components/types';
 import ToolbarView from '../../dom_components/view/ToolbarView';
 import { isDoc, isTaggableNode, isVisible, off, on } from '../../utils/dom';
-import { getComponentModel, getComponentView, getUnitFromValue, getViewEl, hasWin, isObject } from '../../utils/mixins';
+import { getComponentModel, getComponentView, hasWin, isObject } from '../../utils/mixins';
 import { CommandObject } from './CommandAbstract';
-import { CanvasSpotBuiltInTypes } from '../../canvas/model/CanvasSpot';
-import { ResizerOptions } from '../../utils/Resizer';
-import { ComponentsEvents } from '../../dom_components/types';
 
 let showOffsets: boolean;
 /**
@@ -96,7 +95,7 @@ export default {
     methods[method](listenToEl, 'scroll', this.onContainerChange);
     em[method](`component:toggled ${eventCmpUpdate} undo redo`, this.onSelect, this);
     em[method]('change:componentHovered', this.onHovered, this);
-    em[method]('component:resize styleable:change component:input', this.updateGlobalPos, this);
+    em[method](`${ComponentsEvents.resize} styleable:change ${ComponentsEvents.input}`, this.updateGlobalPos, this);
     em[method](`${eventCmpUpdate}:toolbar`, this._upToolbar, this);
     em[method]('frame:updated', this.onFrameUpdated, this);
     em[method]('canvas:updateTools', this.onFrameUpdated, this);
@@ -147,7 +146,7 @@ export default {
       component.views?.forEach((view) => {
         const el = view.el;
         const pos = this.getElementPos(el);
-        result = { el, pos, component, view: getViewEl(el) };
+        result = { el, pos, component, view };
 
         if (el.ownerDocument === this.currentDoc) {
           this.elHovered = result;
@@ -178,12 +177,12 @@ export default {
     const component = em.getSelected();
     const currentFrame = em.getCurrentFrame();
     const view = component && component.getView(currentFrame?.model);
-    let el = view && view.el;
+    let el = view?.el;
     let result = {};
 
     if (el && isVisible(el)) {
       const pos = this.getElementPos(el);
-      result = { el, pos, component, view: getViewEl(el) };
+      result = { el, pos, component, view };
     }
 
     this.elSelected = result;
@@ -327,7 +326,7 @@ export default {
    * @param  {Component} model
    * @param  {Event} event
    */
-  select(model: Component, event = {}) {
+  select(model: Component, event: MouseEvent) {
     if (!model) return;
     const { em } = this;
     em.setSelected(model, { event, useValid: true });
@@ -395,133 +394,41 @@ export default {
   initResize(elem: HTMLElement) {
     const { em, canvas } = this;
     const editor = em.Editor;
-    const model = !isElement(elem) && isTaggableNode(elem) ? elem : em.getSelected();
-    const resizable = model?.get('resizable');
+    const component = !isElement(elem) && isTaggableNode(elem) ? elem : em.getSelected();
+    const resizable = component?.get?.('resizable');
     const spotTypeResize = CanvasSpotBuiltInTypes.Resize;
     const hasCustomResize = canvas.hasCustomSpot(spotTypeResize);
     canvas.removeSpots({ type: spotTypeResize });
+    const initEventOpts = {
+      component,
+      hasCustomResize,
+      resizable,
+    };
 
-    if (model && resizable) {
-      canvas.addSpot({ type: spotTypeResize, component: model });
-      const el = isElement(elem) ? elem : model.getEl();
-      const {
-        onStart = () => {},
-        onMove = () => {},
-        onEnd = () => {},
-        updateTarget = () => {},
-        ...resizableOpts
-      } = isObject(resizable) ? resizable : {};
+    component && em.trigger(ComponentsEvents.resizeInit, initEventOpts);
+    const resizableResult = initEventOpts.resizable;
+
+    if (component && resizableResult) {
+      canvas.addSpot({ type: spotTypeResize, component });
+      const el = isElement(elem) ? elem : component.getEl();
+      const resizableOpts = isObject(resizableResult) ? resizableResult : {};
 
       if (hasCustomResize || !el || this.activeResizer) return;
 
-      let modelToStyle: any;
-      const { config } = em;
-      const pfx = config.stylePrefix || '';
-      const resizeClass = `${pfx}resizing`;
-      const self = this;
-      const resizeEventOpts = {
-        component: model,
-        el,
-      };
-
-      const toggleBodyClass = (method: string, e: any, opts: any) => {
-        const docs = opts.docs;
-        docs &&
-          docs.forEach((doc: Document) => {
-            const body = doc.body;
-            const cls = body.className || '';
-            body.className = (method == 'add' ? `${cls} ${resizeClass}` : cls.replace(resizeClass, '')).trim();
-          });
-      };
-
-      const options: ResizerOptions = {
-        // Here the resizer is updated with the current element height and width
-        onStart(ev, opts) {
-          onStart(ev, opts);
-          const { el, config, resizer } = opts;
-          const { keyHeight, keyWidth, currentUnit, keepAutoHeight, keepAutoWidth } = config;
-          toggleBodyClass('add', ev, opts);
-          modelToStyle = em.Styles.getModelToStyle(model);
-          const computedStyle = getComputedStyle(el);
-          const modelStyle = modelToStyle.getStyle();
-
-          let currentWidth = modelStyle[keyWidth];
-          config.autoWidth = keepAutoWidth && currentWidth === 'auto';
-          if (isNaN(parseFloat(currentWidth))) {
-            currentWidth = computedStyle[keyWidth];
-          }
-
-          let currentHeight = modelStyle[keyHeight];
-          config.autoHeight = keepAutoHeight && currentHeight === 'auto';
-          if (isNaN(parseFloat(currentHeight))) {
-            currentHeight = computedStyle[keyHeight];
-          }
-
-          resizer.startDim!.w = parseFloat(currentWidth);
-          resizer.startDim!.h = parseFloat(currentHeight);
-          showOffsets = false;
-
-          if (currentUnit) {
-            config.unitHeight = getUnitFromValue(currentHeight);
-            config.unitWidth = getUnitFromValue(currentWidth);
-          }
-          self.activeResizer = true;
-          editor.trigger('component:resize', { ...resizeEventOpts, type: 'start' });
-        },
-
-        // Update all positioned elements (eg. component toolbar)
-        onMove(ev) {
-          onMove(ev);
-          editor.trigger('component:resize', { ...resizeEventOpts, type: 'move' });
-        },
-
-        onEnd(ev, opts) {
-          onEnd(ev, opts);
-          toggleBodyClass('remove', ev, opts);
-          editor.trigger('component:resize', { ...resizeEventOpts, type: 'end' });
-          showOffsets = true;
-          self.activeResizer = false;
-        },
-
-        updateTarget(el, rect, options) {
-          updateTarget(el, rect, options);
-          if (!modelToStyle) {
-            return;
-          }
-
-          const { store, selectedHandler, config } = options;
-          const { keyHeight, keyWidth, autoHeight, autoWidth, unitWidth, unitHeight } = config;
-          const onlyHeight = ['tc', 'bc'].indexOf(selectedHandler!) >= 0;
-          const onlyWidth = ['cl', 'cr'].indexOf(selectedHandler!) >= 0;
-          const style: any = {};
-
-          if (!onlyHeight) {
-            const bodyw = canvas.getBody().offsetWidth;
-            const width = rect.w < bodyw ? rect.w : bodyw;
-            style[keyWidth!] = autoWidth ? 'auto' : `${width}${unitWidth}`;
-          }
-
-          if (!onlyWidth) {
-            style[keyHeight!] = autoHeight ? 'auto' : `${rect.h}${unitHeight}`;
-          }
-
-          if (em.getDragMode(model)) {
-            style.top = `${rect.t}${unitHeight}`;
-            style.left = `${rect.l}${unitWidth}`;
-          }
-
-          const finalStyle = {
-            ...style,
-            // value for the partial update
-            __p: !store,
-          };
-          modelToStyle.addStyle(finalStyle, { avoidStore: !store });
-          em.Styles.__emitCmpStyleUpdate(finalStyle, { components: em.getSelected() });
-        },
+      this.resizer = editor.runCommand('resize', {
         ...resizableOpts,
-      };
-
-      this.resizer = editor.runCommand('resize', { el, options, force: 1 });
+        el,
+        component,
+        force: true,
+        afterStart: () => {
+          showOffsets = false;
+          this.activeResizer = true;
+        },
+        afterEnd: () => {
+          showOffsets = true;
+          this.activeResizer = false;
+        },
+      });
     } else {
       if (hasCustomResize) return;
 

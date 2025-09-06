@@ -1,4 +1,4 @@
-import { DynamicWatchersOptions } from './ComponentResolverWatcher';
+import { DataWatchersOptions } from './ModelResolverWatcher';
 import Frame from '../../canvas/model/Frame';
 import { AddOptions, Nullable, OptionAsDocument } from '../../common';
 import EditorModel from '../../editor/model/Editor';
@@ -12,7 +12,6 @@ import Component from './Component';
 import Components from './Components';
 import { ToolbarButtonProps } from './ToolbarButton';
 import { ParseNodeOptions } from '../../parser/config/config';
-import { DataCollectionStateMap } from '../../data_sources/model/data_collection/types';
 
 export type DragMode = 'translate' | 'absolute' | '';
 
@@ -254,7 +253,7 @@ export interface ComponentProperties {
   [key: string]: any;
 }
 
-export interface SymbolToUpOptions extends DynamicWatchersOptions {
+export interface SymbolToUpOptions extends DataWatchersOptions {
   changed?: string;
   fromInstance?: boolean;
   noPropagate?: boolean;

@@ -1,6 +1,6 @@
 import { isEmpty, forEach, isString, isArray } from 'underscore';
-import { Model, ObjectAny, View } from '../../common';
-import StyleableModel from '../../domain_abstract/model/StyleableModel';
+import { ObjectAny, ObjectHash } from '../../common';
+import StyleableModel, { StyleProps } from '../../domain_abstract/model/StyleableModel';
 import Selectors from '../../selector_manager/model/Selectors';
 import { getMediaLength } from '../../code_manager/model/CssGenerator';
 import { isEmptyObj, hasWin } from '../../utils/mixins';
@@ -8,8 +8,15 @@ import Selector, { SelectorProps } from '../../selector_manager/model/Selector';
 import EditorModel from '../../editor/model/Editor';
 import CssRuleView from '../view/CssRuleView';
 
+export interface ToCssOptions {
+  important?: boolean | string[];
+  allowEmpty?: boolean;
+  style?: StyleProps;
+  inline?: boolean;
+}
+
 /** @private */
-export interface CssRuleProperties {
+export interface CssRuleProperties extends ObjectHash {
   /**
    * Array of selectors
    */
@@ -113,13 +120,13 @@ export default class CssRule extends StyleableModel<CssRuleProperties> {
   }
 
   constructor(props: CssRuleProperties, opt: any = {}) {
-    super(props);
+    super(props, { em: opt.em });
     this.config = props || {};
     this.opt = opt;
     this.em = opt.em;
     this.ensureSelectors(null, null, {});
     this.on('change', this.__onChange);
-    this.setStyle(this.get('style'));
+    this.setStyle(this.get('style'), { skipWatcherUpdates: true });
   }
 
   __onChange(m: CssRule, opts: any) {
@@ -128,12 +135,10 @@ export default class CssRule extends StyleableModel<CssRuleProperties> {
     changed && !isEmptyObj(changed) && em?.changesUp(opts);
   }
 
-  clone(): CssRule {
-    const opts = { ...this.opt };
-    const attr = { ...this.attributes };
-    attr.selectors = this.get('selectors')!.map((s) => s.clone() as Selector);
-    // @ts-ignore
-    return new this.constructor(attr, opts);
+  clone(): typeof this {
+    const selectors = this.get('selectors')!.map((s) => s.clone() as Selector);
+
+    return super.clone({ selectors });
   }
 
   ensureSelectors(m: any, c: any, opts: any) {
@@ -214,7 +219,7 @@ export default class CssRule extends StyleableModel<CssRuleProperties> {
    * });
    * cssRule.getDeclaration() // ".class1{color:red;}"
    */
-  getDeclaration(opts: ObjectAny = {}) {
+  getDeclaration(opts: ToCssOptions = {}) {
     let result = '';
     const { important } = this.attributes;
     const selectors = this.selectorsToString(opts);
@@ -285,7 +290,7 @@ export default class CssRule extends StyleableModel<CssRuleProperties> {
    * });
    * cssRule.toCSS() // "@media (min-width: 500px){.class1{color:red;}}"
    */
-  toCSS(opts: ObjectAny = {}) {
+  toCSS(opts: ToCssOptions = {}) {
     let result = '';
     const atRule = this.getAtRule();
     const block = this.getDeclaration(opts);
@@ -300,9 +305,8 @@ export default class CssRule extends StyleableModel<CssRuleProperties> {
     return result;
   }
 
-  toJSON(...args: any) {
-    const obj = Model.prototype.toJSON.apply(this, args);
-
+  toJSON(opts?: ObjectAny) {
+    const obj = super.toJSON(opts);
     if (this.em?.getConfig().avoidDefaults) {
       const defaults = this.defaults();
 

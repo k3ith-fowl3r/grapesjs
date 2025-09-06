@@ -27,7 +27,7 @@ component.get('tagName');
 *   `name` **[String][1]?** Name of the component. Will be used, for example, in Layers and badges
 *   `removable` **[Boolean][3]?** When `true` the component is removable from the canvas, default: `true`
 *   `draggable` **([Boolean][3] | [String][1] | [Function][4])?** Indicates if it's possible to drag the component inside others.
-    You can also specify a query string to indentify elements,
+    You can also specify a query string to identify elements,
     eg. `'.some-class[title=Hello], [data-gjs-type=column]'` means you can drag the component only inside elements
     containing `some-class` class and `Hello` title, and `column` components. In the case of a function, target and destination components are passed as arguments, return a Boolean to indicate if the drag is possible. Default: `true`
 *   `droppable` **([Boolean][3] | [String][1] | [Function][4])?** Indicates if it's possible to drop other components inside. You can use
@@ -137,6 +137,7 @@ By setting override to specific properties, changes of those properties will be 
 ### Parameters
 
 *   `value` **([Boolean][3] | [String][1] | [Array][5]<[String][1]>)**&#x20;
+*   `options` **DynamicWatchersOptions**  (optional, default `{}`)
 
 ### Examples
 
@@ -280,7 +281,7 @@ Update attributes of the component
 ### Parameters
 
 *   `attrs` **[Object][2]** Key value attributes
-*   `opts` **SetAttrOptions**  (optional, default `{}`)
+*   `opts` **SetAttrOptions**  (optional, default `{skipWatcherUpdates:false,fromDataSource:false}`)
 *   `options` **[Object][2]** Options for the model update
 
 ### Examples

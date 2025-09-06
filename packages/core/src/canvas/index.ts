@@ -40,7 +40,7 @@ import Canvas from './model/Canvas';
 import CanvasSpot, { CanvasSpotBuiltInTypes, CanvasSpotProps } from './model/CanvasSpot';
 import CanvasSpots from './model/CanvasSpots';
 import Frame from './model/Frame';
-import { CanvasEvents, CanvasRefreshOptions, ToWorldOption } from './types';
+import { CanvasEvents, CanvasRefreshOptions, SetZoomOptions, ToWorldOption } from './types';
 import CanvasView, { FitViewportOptions } from './view/CanvasView';
 import FrameView from './view/FrameView';
 import { DragSource } from '../utils/sorter/types';
@@ -486,7 +486,9 @@ export default class CanvasModule extends Module<CanvasConfig> {
    */
   getMouseRelativePos(e: any, opts: any = {}) {
     const subWinOffset = opts.subWinOffset;
-    const doc = e.target.ownerDocument;
+    const { target } = e;
+    // In Firefox, pointing outside the window, will return the HTMLDocument.
+    const doc = target.nodeType === Node.DOCUMENT_NODE ? target : target.ownerDocument;
     const win = doc.defaultView || doc.parentWindow;
     const frame = win.frameElement;
     const yOffset = subWinOffset ? win.pageYOffset : 0;
@@ -513,7 +515,7 @@ export default class CanvasModule extends Module<CanvasConfig> {
    * @return {Object}
    * @private
    */
-  getMouseRelativeCanvas(ev: MouseEvent | { clientX: number; clientY: number }, opts: any) {
+  getMouseRelativeCanvas(ev: MouseEvent | { clientX: number; clientY: number }, opts?: Record<string, unknown>) {
     const zoom = this.getZoomDecimal();
     const canvasView = this.getCanvasView();
     const canvasPos = canvasView.getPosition(opts) ?? { top: 0, left: 0 };
@@ -615,6 +617,7 @@ export default class CanvasModule extends Module<CanvasConfig> {
       const el = this.getCanvasView().el;
       this.autoScroller.start(el, el, {
         zoom: this.em.getZoomDecimal(),
+        ignoredElement: this.getSpotsEl(),
       });
     }
   }
@@ -639,8 +642,8 @@ export default class CanvasModule extends Module<CanvasConfig> {
    * @example
    * canvas.setZoom(50); // set zoom to 50%
    */
-  setZoom(value: number | string) {
-    this.canvas.set('zoom', typeof value === 'string' ? parseFloat(value) : value);
+  setZoom(value: number | string, opts: SetZoomOptions = {}) {
+    this.canvas.set('zoom', typeof value === 'string' ? parseFloat(value) : value, opts);
     return this;
   }
 
